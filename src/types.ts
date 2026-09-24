@@ -32,7 +32,13 @@ export type LegendLayerTag = {
   overlay?: boolean;
 };
 
-export type LegendManifestItem = { label?: LegendLabel; order?: number; hidden?: boolean };
+export type LegendManifestItem = {
+  label?: LegendLabel;
+  order?: number;
+  hidden?: boolean;
+  /** Entry keys this entry stands for (merges): `place:village` for `place:hamlet`, `place:farm`, … */
+  keys?: string[];
+};
 
 /** The root manifest in `style.metadata["maptoolkit:legend"]`. */
 export type LegendManifest = {

@@ -202,6 +202,10 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
 
   const isHiddenKey = (entryKey: string) => manifestEntries[entryKey]?.hidden === true;
   const groupHidden = (group: string) => manifestGroups[group]?.hidden === true;
+  // Merges: an entry lists the keys it stands for; rendered keys are mapped to it first.
+  const mergeTarget = new Map<string, string>();
+  for (const [target, item] of Object.entries(manifestEntries)) for (const k of item.keys ?? []) mergeTarget.set(k, target);
+  const resolveKey = (key: string) => mergeTarget.get(key) ?? key;
 
   // Pass 1 — main layers → class entries; standalone labels → candidates.
   for (const feature of features) {
@@ -211,7 +215,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     if (tag.instance) {
       const value = tag.keyProperty ? valueToString(feature.properties?.[tag.keyProperty]) : undefined;
       if (!value) continue;
-      const entryKey = `${tag.group}:${value}`;
+      const entryKey = resolveKey(`${tag.group}:${value}`);
       if (isHiddenKey(entryKey)) continue;
       const name = valueToString(feature.layer.layout?.["text-field"])?.trim() || undefined;
       if (!name && !feature.layer.layout?.["icon-image"]) continue; // nothing to show
@@ -235,7 +239,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     mainTags.set(feature.layer.id, tag);
     const value = tag.key ?? (tag.keyProperty ? valueToString(feature.properties?.[tag.keyProperty]) : undefined);
     if (!value) continue;
-    const entryKey = `${tag.group}:${value}`;
+    const entryKey = resolveKey(`${tag.group}:${value}`);
     if (isHiddenKey(entryKey)) continue;
     if (!entriesOfMain.has(feature.layer.id)) entriesOfMain.set(feature.layer.id, new Set());
     entriesOfMain.get(feature.layer.id)!.add(entryKey);
@@ -275,7 +279,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       let targetKeys: string[];
       if (mainTag?.keyProperty) {
         const value = valueToString(feature.properties?.[mainTag.keyProperty]);
-        const k = value ? `${mainTag.group}:${value}` : undefined;
+        const k = value ? resolveKey(`${mainTag.group}:${value}`) : undefined;
         targetKeys = k && produced.has(k) ? [k] : [];
       } else {
         targetKeys = [...produced];

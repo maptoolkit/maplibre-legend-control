@@ -60,8 +60,17 @@ describe("buildLegendModel", () => {
     const town = entry("place:town");
     expect(town).toMatchObject({ kind: "instance", name: "Tulln an der Donau", label: "Stadt" });
     expect(town?.text).toMatchObject({ fontStack: ["Rosario Bold"], size: 14, color: "rgba(40,40,40,1)", haloWidth: 1, anchor: undefined });
-    expect(entry("place:village")).toMatchObject({ name: "Langenlebarn" });
+    // the hamlet is merged into the village entry (manifest keys) and wins by rank
+    expect(entry("place:village")).toMatchObject({ name: "Staasdorf", label: "Dorf" });
+    expect(entry("place:hamlet")).toBeUndefined();
     expect(group("place")?.entries.map((e) => e.key)).toEqual(["place:town", "place:village"]);
+  });
+
+  it("merges stop when the target is hidden and vanish without the manifest", () => {
+    const hidden = build({ manifest: { ...manifest, entries: { ...manifest.entries, "place:village": { ...manifest.entries!["place:village"], hidden: true } } } });
+    expect(hidden.groups.find((g) => g.id === "place")?.entries.map((e) => e.key)).toEqual(["place:town"]);
+    const plain = build({ manifest: undefined });
+    expect(plain.groups.find((g) => g.id === "place")?.entries.map((e) => e.key).sort()).toEqual(["place:hamlet", "place:town", "place:village"]);
   });
 
   it("falls back to the edge feature when nothing else is on screen", () => {

@@ -15,7 +15,7 @@ export const manifest: LegendManifest = {
     "road:minor": { label: { de: "Nebenstraße", en: "Minor road" }, order: 3 },
     "nature:wood": { label: { de: "Wald", en: "Forest" }, order: 1 },
     "place:town": { label: { de: "Stadt", en: "Town" }, order: 2 },
-    "place:village": { label: { de: "Dorf", en: "Village" }, order: 3 },
+    "place:village": { label: { de: "Dorf", en: "Village" }, order: 3, keys: ["place:hamlet", "place:farm"] },
     "poi:bench": { hidden: true },
   },
 };
@@ -124,6 +124,7 @@ export const features: RenderedFeature[] = [
   place("Tulln an der Donau", "town", 12, [200, 150]),
   place("Tulln an der Donau", "town", 12, [200, 150]), // duplicate copy from a neighbouring tile
   place("Langenlebarn", "village", 15, [220, 160], "Rosario Regular"),
+  place("Staasdorf", "hamlet", 9, [230, 170], "Rosario Regular"), // merged into place:village — and more prominent than the village
   // POI: hidden by the manifest
   {
     layer: {

@@ -95,8 +95,13 @@ The list is one grid across all groups, so the left column is as wide as the
 widest symbol and centred labels share one centre axis; left- or right-justified
 labels sit at the column's edge.
 
-Custom layers take part when they carry the same tag; layers without a tag are
-ignored. The contract is documented in
+Similar-looking types can share one row: a manifest entry may list the `keys`
+it stands for (`place:village` for `place:hamlet`, `place:farm`, …), and the
+control maps rendered keys to it before building the legend. The Maptoolkit
+styles ship such merges for places (small settlements, districts, islands,
+parks, landforms, natural areas); styles override them like every other
+manifest field. Custom layers take part when they carry the same tag; layers
+without a tag are ignored. The contract is documented in
 [style-family-js/docs/styles.md](https://github.com/maptoolkit/style-family-js/blob/main/docs/styles.md#legend-metadata-maptoolkitlegend).
 
 ## Options
