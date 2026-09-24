@@ -10,6 +10,7 @@
   --legend-control-bg-subtle: #f6f6f9;
   --legend-control-radius: 8px;
   --legend-control-radius-sm: 4px;
+  --legend-control-space-1: 4px;
   --legend-control-space-2: 8px;
   --legend-control-space-3: 12px;
   --legend-control-space-4: 16px;
@@ -17,31 +18,142 @@
   --legend-control-color-fg-muted: #656776;
   --legend-control-color-primary: #4054a5;
   --legend-control-width: 260px;
+  --legend-control-max-height: 60vh;
+  --legend-control-swatch-width: 36px;
+  --legend-control-swatch-height: 18px;
 
   box-sizing: border-box;
   width: var(--legend-control-width);
   max-width: 100%;
-  padding: var(--legend-control-space-3) var(--legend-control-space-4);
   font-family: var(--legend-control-font-family);
+  font-size: 13px;
+  line-height: 1.3;
   color: var(--legend-control-color-fg-strong);
   background: var(--legend-control-bg-color);
   border-radius: var(--legend-control-radius);
+  overflow: hidden;
 }
 .maplibre-legend-control:not(:empty) {
   box-shadow: var(--legend-control-map);
 }
-.maplibre-legend-control .maplibre-legend-control-title {
-  margin: 0 0 var(--legend-control-space-2) 0;
-  font-size: 14px;
+
+/* header (toggle) */
+.maplibre-legend-control .maplibre-legend-control-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: auto;
+  padding: var(--legend-control-space-3) var(--legend-control-space-4);
+  background: var(--legend-control-bg-color);
+  border: none;
+  border-radius: 0;
+  font: inherit;
   font-weight: 700;
+  font-size: 14px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+.maplibre-legend-control .maplibre-legend-control-header:hover {
+  background: var(--legend-control-bg-subtle);
+}
+.maplibre-legend-control .maplibre-legend-control-header::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-left: var(--legend-control-space-2);
+  border-right: 2px solid var(--legend-control-color-fg-muted);
+  border-bottom: 2px solid var(--legend-control-color-fg-muted);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform var(--legend-control-duration) var(--legend-control-ease);
+}
+.maplibre-legend-control.maplibre-legend-control-collapsed .maplibre-legend-control-header::after {
+  transform: rotate(-45deg) translateY(2px);
+}
+
+/* list */
 .maplibre-legend-control .maplibre-legend-control-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  max-height: 60vh;
+  max-height: var(--legend-control-max-height);
   overflow: auto;
+  padding: 0 var(--legend-control-space-4) var(--legend-control-space-3);
+  border-top: 1px solid var(--legend-control-border-color);
 }
 .maplibre-legend-control.maplibre-legend-control-collapsed .maplibre-legend-control-list {
   display: none;
+}
+.maplibre-legend-control .maplibre-legend-control-empty {
+  margin: var(--legend-control-space-3) 0 0;
+  color: var(--legend-control-color-fg-muted);
+}
+.maplibre-legend-control .maplibre-legend-control-group-name {
+  margin: var(--legend-control-space-3) 0 var(--legend-control-space-1);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--legend-control-color-fg-muted);
+}
+.maplibre-legend-control .maplibre-legend-control-entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.maplibre-legend-control .maplibre-legend-control-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--legend-control-space-2);
+  min-height: 24px;
+  padding: 2px 0;
+}
+.maplibre-legend-control .maplibre-legend-control-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.maplibre-legend-control .maplibre-legend-control-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.maplibre-legend-control .maplibre-legend-control-type {
+  font-size: 11px;
+  color: var(--legend-control-color-fg-muted);
+}
+
+/* swatches */
+.maplibre-legend-control .maplibre-legend-control-swatch {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--legend-control-swatch-width);
+  height: var(--legend-control-swatch-height);
+  overflow: hidden;
+}
+.maplibre-legend-control .maplibre-legend-control-swatch-fill {
+  border-radius: var(--legend-control-radius-sm);
+}
+.maplibre-legend-control .maplibre-legend-control-pattern {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+}
+.maplibre-legend-control .maplibre-legend-control-stroke {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 1px;
+}
+.maplibre-legend-control .maplibre-legend-control-swatch-icon canvas {
+  display: block;
+}
+.maplibre-legend-control .maplibre-legend-control-swatch-icon-missing::before,
+.maplibre-legend-control .maplibre-legend-control-swatch-empty::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--legend-control-border-color);
 }
