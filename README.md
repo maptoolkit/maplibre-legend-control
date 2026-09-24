@@ -77,8 +77,10 @@ evaluated paint and layout, and builds:
   together when too wide; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the
-  hiking band together with the path it runs on. SDF sprite icons are
-  recoloured with their `icon-color`;
+  hiking band together with the path it runs on. Fills carry their sprite
+  pattern and the line layers of their stack as a border (an intermittent lake
+  keeps its dashed shoreline). SDF sprite icons are recoloured with their
+  `icon-color`;
 - **instance entries** — for standalone label layers (places, waters, POIs) one
   entry per type, showing the most prominent feature (lowest rank, edge
   features last, then the one closest to the centre) as the map draws it: the

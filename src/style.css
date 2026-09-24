@@ -199,6 +199,11 @@
   inset: 0;
   background-repeat: repeat;
 }
+.maplibre-legend-control .maplibre-legend-control-fill-borders {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
 .maplibre-legend-control .maplibre-legend-control-swatch-line svg {
   display: block;
   overflow: visible;

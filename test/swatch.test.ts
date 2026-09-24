@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createLineSwatch, createSymbolPreview, lineVariantFor, LINE_VARIANTS, textPlacement } from "../src/swatch";
+import { createFillSwatch, createLineSwatch, createSymbolPreview, lineVariantFor, LINE_VARIANTS, textPlacement } from "../src/swatch";
 import type { TextStyle } from "../src/types";
 
 const cases: Array<[Partial<TextStyle> | undefined, ReturnType<typeof textPlacement>]> = [
@@ -89,5 +89,32 @@ describe("caps", () => {
     expect(h.getAttribute("stroke-linecap")).toBe("butt");
     expect(h.getAttribute("stroke-dasharray")).toBe("0.6 48");
     expect(h.getAttribute("stroke-dashoffset")).toBe("-24.6");
+  });
+});
+
+describe("fill swatch borders", () => {
+  it("draws line layers of the stack as a (dashed) border around the box", () => {
+    const fill = { id: "water_intermittent", type: "fill", role: "main", order: 0, paint: { "fill-color": "rgba(170,200,230,1)", "fill-opacity": 0.8 }, layout: {} };
+    const casing = {
+      id: "water_intermittent_casing",
+      type: "line",
+      role: "casing",
+      order: 1,
+      paint: { "line-color": "rgba(60,120,180,1)", "line-width": 2, "line-dasharray": { from: [3, 2], to: [3, 2] } },
+      layout: { "line-cap": "butt" },
+    };
+    const box = createFillSwatch(fill, undefined, [casing]);
+    expect(box.style.backgroundColor).toContain("170, 200, 230"); // jsdom normalises the colour string
+    const rect = box.querySelector("rect.maplibre-legend-control-border-casing") as SVGRectElement;
+    expect(rect).not.toBeNull();
+    expect(rect.getAttribute("stroke")).toBe("rgba(60,120,180,1)");
+    expect(rect.getAttribute("stroke-width")).toBe("2");
+    expect(rect.getAttribute("x")).toBe("1"); // inset by half the width
+    expect(rect.getAttribute("stroke-dasharray")).toBe("6 4"); // [3, 2] × width 2
+  });
+
+  it("has no border svg without line layers", () => {
+    const fill = { id: "f", type: "fill", role: "main", order: 0, paint: { "fill-color": "#abc" }, layout: {} };
+    expect(createFillSwatch(fill).querySelector("svg")).toBeNull();
   });
 });

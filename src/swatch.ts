@@ -183,8 +183,14 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
   return box;
 }
 
-/** Filled box (with pattern when the sprite image is available), outline from fill-outline-color. */
-export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, textures: SwatchLayer[] = []): HTMLElement {
+/**
+ * Filled box: fill colour and opacity, sprite pattern when the image is
+ * available, `fill-outline-color` as a hairline, and every line layer of the
+ * stack (casing, outline, band …) drawn as a border around the box with its
+ * colour, width, opacity and dash pattern — an intermittent lake keeps its
+ * dashed shoreline.
+ */
+export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, supporting: SwatchLayer[] = []): HTMLElement {
   const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-fill`);
   const isExtrusion = layer.type === "fill-extrusion";
   const color = valueToString(layer.paint[isExtrusion ? "fill-extrusion-color" : "fill-color"]);
@@ -194,7 +200,7 @@ export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, textur
   box.style.opacity = String(opacity);
   if (outline) box.style.boxShadow = `inset 0 0 0 1px ${outline}`;
 
-  for (const tex of [layer, ...textures]) {
+  for (const tex of [layer, ...supporting.filter((l) => l.type === "fill")]) {
     const pattern = valueToString(tex.paint["fill-pattern"]);
     const image = pattern && getImage ? getImage(pattern) : undefined;
     const canvas = image ? imageToCanvas(image) : undefined;
@@ -206,6 +212,37 @@ export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, textur
       p.style.opacity = String(clamp(num(tex.paint["fill-opacity"], 1), 0, 1));
       box.appendChild(p);
     }
+  }
+
+  const borders = supporting.map(strokeOf).filter((st): st is Stroke => Boolean(st));
+  if (borders.length) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", `${CLASS}-fill-borders`);
+    svg.setAttribute("viewBox", `0 0 ${SWATCH_W} ${SWATCH_H}`);
+    svg.setAttribute("width", String(SWATCH_W));
+    svg.setAttribute("height", String(SWATCH_H));
+    svg.setAttribute("aria-hidden", "true");
+    for (const border of borders) {
+      // the stroke sits inside the box: inset by half its width, capped at a third of the height
+      const width = Math.min(border.width, SWATCH_H / 3);
+      const rect = document.createElementNS(SVG_NS, "rect");
+      rect.setAttribute("class", `${CLASS}-border ${CLASS}-border-${border.role}`);
+      rect.setAttribute("x", String(width / 2));
+      rect.setAttribute("y", String(width / 2));
+      rect.setAttribute("width", String(SWATCH_W - width));
+      rect.setAttribute("height", String(SWATCH_H - width));
+      rect.setAttribute("fill", "none");
+      rect.setAttribute("stroke", border.color);
+      rect.setAttribute("stroke-width", String(width));
+      rect.setAttribute("stroke-linejoin", "miter");
+      if (border.opacity < 1) rect.setAttribute("stroke-opacity", String(border.opacity));
+      if (border.dash) {
+        const k = width / border.width; // dash lengths follow the (possibly capped) width
+        rect.setAttribute("stroke-dasharray", border.dash.map((d) => Math.round(Math.max(0.5, d * k) * 100) / 100).join(" "));
+      }
+      svg.appendChild(rect);
+    }
+    box.appendChild(svg);
   }
   return box;
 }
@@ -263,7 +300,7 @@ export function createSwatch(layers: SwatchLayer[], getImage?: GetImage, variant
       return createFillSwatch(
         main,
         getImage,
-        layers.filter((l) => l !== main && l.type === "fill" && l.paint["fill-pattern"]),
+        layers.filter((l) => l !== main),
       );
     case "symbol":
       return createIconSwatch(main, getImage);
