@@ -1,5 +1,5 @@
 import type { Map, IControl, ControlPosition } from "maplibre-gl";
-import { buildLegendModel } from "./model";
+import { buildLegendModel, valueToString } from "./model";
 import { createSwatch, createSymbolPreview, lineVariantFor, type GetImage } from "./swatch";
 import { LEGEND_METADATA_KEY, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
@@ -42,6 +42,15 @@ export type LegendControlOptions = {
    * @defaultValue `0.6`
    */
   maxHeightRatio?: number;
+  /**
+   * Panel background: `"auto"` takes the style's `background` layer colour at
+   * the current zoom (so names and swatches sit on the same ground as on the
+   * map), falling back to `hsl(90, 23%, 95%)` when the style has none; any CSS
+   * colour string fixes the background instead. Text colours switch to light
+   * on dark backgrounds.
+   * @defaultValue `"auto"`
+   */
+  background?: "auto" | string;
 };
 
 /**
@@ -52,7 +61,11 @@ export const defaultLegendControlOptions: LegendControlOptions = {
   edgeMargin: 24,
   updateDelay: 100,
   maxHeightRatio: 0.6,
+  background: "auto",
 };
+
+/** Used when the style has no background layer (or its colour cannot be read). */
+export const FALLBACK_BACKGROUND = "hsl(90, 23%, 95%)";
 
 const CLASS = "maplibre-legend-control";
 
@@ -219,6 +232,31 @@ export class LegendControl implements IControl {
     this._dirty = false;
     this._render(model);
     this._fitToMap();
+    this._applyBackground();
+  }
+
+  /**
+   * Paint the panel in the map's background colour. The `background` layer's
+   * colour is usually a zoom expression, so the value evaluated for the current
+   * zoom is read from MapLibre's style layer (`map.style.getLayer(id).paint`,
+   * not part of the public API — guarded, with the raw string or the fallback
+   * colour when unavailable).
+   */
+  private _applyBackground() {
+    const map = this._map;
+    const container = this._container;
+    if (!map || !container) return;
+    const wanted = this.options.background ?? "auto";
+    const color = (wanted === "auto" ? backgroundColorOf(map) : wanted) ?? FALLBACK_BACKGROUND;
+    container.style.setProperty("--legend-control-bg-color", color);
+
+    const dark = isDark(color);
+    const set = (name: string, value: string) => (dark ? container.style.setProperty(name, value) : container.style.removeProperty(name));
+    set("--legend-control-color-fg-strong", "rgba(255, 255, 255, 0.92)");
+    set("--legend-control-color-fg-muted", "rgba(255, 255, 255, 0.7)");
+    set("--legend-control-border-color", "rgba(255, 255, 255, 0.16)");
+    set("--legend-control-bg-subtle", "rgba(255, 255, 255, 0.08)");
+    container.classList.toggle(`${CLASS}-dark`, dark);
   }
 
   /** Cap the panel at `maxHeightRatio` of the map's height and at the map's width; the list scrolls. */
@@ -302,4 +340,34 @@ export class LegendControl implements IControl {
       list.appendChild(section);
     }
   }
+}
+
+/** The style's background colour evaluated for the current zoom, or `undefined`. */
+export function backgroundColorOf(map: Map): string | undefined {
+  const layer = map.getStyle()?.layers?.find((l) => l.type === "background");
+  if (!layer) return undefined;
+  try {
+    const internal = (map as unknown as { style?: { getLayer?: (id: string) => { paint?: { get?: (name: string) => unknown } } | undefined } }).style;
+    const evaluated = valueToString(internal?.getLayer?.(layer.id)?.paint?.get?.("background-color"));
+    if (evaluated) return evaluated;
+  } catch {
+    // fall through to the raw value
+  }
+  const raw = (layer as { paint?: Record<string, unknown> }).paint?.["background-color"];
+  return typeof raw === "string" ? raw : undefined;
+}
+
+/** Rough relative luminance test for `rgb(a)`/`hsl(a)`/hex colours; unknown formats count as light. */
+export function isDark(color: string): boolean {
+  let r: number | undefined, g: number | undefined, b: number | undefined;
+  const rgb = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i.exec(color);
+  const hex = /^#([0-9a-f]{3,8})$/i.exec(color);
+  const hsl = /^hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/i.exec(color);
+  if (rgb) [r, g, b] = [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+  else if (hex) {
+    const h = hex[1].length < 6 ? hex[1].split("").map((c) => c + c).join("") : hex[1];
+    [r, g, b] = [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  } else if (hsl) return Number(hsl[3]) < 45;
+  if (r === undefined || g === undefined || b === undefined) return false;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.45;
 }

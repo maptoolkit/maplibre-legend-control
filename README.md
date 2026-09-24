@@ -107,6 +107,7 @@ ignored. The contract is documented in
 | `groups`      | `string[]` | all                                       | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`). |
 | `updateDelay` | `number`   | `100`                                     | Debounce in ms between the map's `idle` event and the update.                                      |
 | `maxHeightRatio` | `number` | `0.6`                                    | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width. |
+| `background`  | `"auto" \| string` | `"auto"`                            | Panel background: the style's `background` layer colour at the current zoom (fallback `hsl(90, 23%, 95%)`), or a fixed CSS colour. Text switches to light on dark backgrounds. |
 
 ## Methods
 
@@ -147,6 +148,12 @@ const map = new maplibregl.Map({
 ```
 
 ## Styling
+
+The panel takes the map's ground colour: the style's `background` layer at the
+current zoom (`--legend-control-bg-color`, fallback `hsl(90, 23%, 95%)`), so
+names and swatches sit on the same ground as on the map; on a dark background
+the text colours switch to light (`.maplibre-legend-control-dark`). Pass
+`background: "<css colour>"` to fix it instead.
 
 Appearance is controlled via CSS custom properties on `.maplibre-legend-control`, defined in `style.css`. Override them in your own stylesheet to theme the control:
 

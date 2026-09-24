@@ -6,7 +6,7 @@
   --legend-control-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --legend-control-map: 0 2px 8px rgba(25, 31, 57, 0.15), 0 0 0 1px rgba(25, 31, 57, 0.06);
   --legend-control-border-color: #e1e2ea;
-  --legend-control-bg-color: #ffffff;
+  --legend-control-bg-color: hsl(90, 23%, 95%); /* overridden with the style's background colour */
   --legend-control-bg-subtle: #f6f6f9;
   --legend-control-radius: 8px;
   --legend-control-radius-sm: 4px;

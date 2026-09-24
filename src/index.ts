@@ -1,6 +1,6 @@
 import "./style.css";
 
-export { LegendControl, defaultLegendControlOptions } from "./LegendControl";
+export { LegendControl, defaultLegendControlOptions, FALLBACK_BACKGROUND, backgroundColorOf, isDark } from "./LegendControl";
 export type { LegendControlOptions } from "./LegendControl";
 export { buildLegendModel } from "./model";
 export type { BuildLegendModelInput, Viewport } from "./model";

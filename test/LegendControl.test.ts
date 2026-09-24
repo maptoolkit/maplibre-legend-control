@@ -5,7 +5,7 @@ import { features, layerOrder, manifest } from "./fixtures";
 
 type MockMap = MaplibreMap & { _fire: (event: string) => void; _locale: Record<string, string> };
 
-function createMockMap(options: { withFeatures?: boolean } = {}): MockMap {
+function createMockMap(options: { withFeatures?: boolean; background?: string | null } = {}): MockMap {
   const listeners: Record<string, Array<() => void>> = {};
   const locale: Record<string, string> = {};
   const canvas = document.createElement("canvas");
@@ -14,7 +14,9 @@ function createMockMap(options: { withFeatures?: boolean } = {}): MockMap {
   const mapContainer = document.createElement("div");
   Object.defineProperty(mapContainer, "clientWidth", { value: 400 });
   Object.defineProperty(mapContainer, "clientHeight", { value: 300 });
-  const layers = [...layerOrder.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => ({ id, type: "line", source: "mtk" }));
+  const layers: Array<Record<string, unknown>> = [...layerOrder.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => ({ id, type: "line", source: "mtk" }));
+  const background = options.background === null ? undefined : (options.background ?? "rgba(240,244,236,1)");
+  if (background) layers.unshift({ id: "background", type: "background", paint: { "background-color": ["interpolate", ["linear"], ["zoom"], 11, background, 14, background] } });
   return {
     on: (event: string, listener: () => void) => {
       (listeners[event] ??= []).push(listener);
@@ -28,6 +30,8 @@ function createMockMap(options: { withFeatures?: boolean } = {}): MockMap {
     queryRenderedFeatures: () => (options.withFeatures === false ? [] : features),
     project: ([x, y]: [number, number]) => ({ x, y }),
     getImage: () => undefined,
+    // MapLibre's internal style object: evaluated paint of a layer at the current zoom
+    style: { getLayer: (id: string) => (id === "background" && background ? { paint: { get: () => ({ toString: () => background }) } } : undefined) },
     _locale: locale,
     _getUIString: (key: string) => {
       const value = locale[key];
@@ -125,6 +129,31 @@ describe("LegendControl", () => {
     expect(town.classList.contains("maplibre-legend-control-visual-start")).toBe(false);
     const peak = container.querySelector('[data-key="poi:peak"] .maplibre-legend-control-visual') as HTMLElement;
     expect(peak.classList.contains("maplibre-legend-control-visual-start")).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it("paints the panel in the style's background colour, light text on dark", () => {
+    vi.useFakeTimers();
+    const light = new LegendControl({ updateDelay: 0 }).onAdd(createMockMap());
+    vi.runAllTimers();
+    expect(light.style.getPropertyValue("--legend-control-bg-color")).toBe("rgba(240,244,236,1)");
+    expect(light.style.getPropertyValue("--legend-control-color-fg-strong")).toBe("");
+    expect(light.classList.contains("maplibre-legend-control-dark")).toBe(false);
+
+    const dark = new LegendControl({ updateDelay: 0 }).onAdd(createMockMap({ background: "rgba(24,26,34,1)" }));
+    vi.runAllTimers();
+    expect(dark.style.getPropertyValue("--legend-control-bg-color")).toBe("rgba(24,26,34,1)");
+    expect(dark.style.getPropertyValue("--legend-control-color-fg-strong")).not.toBe("");
+    expect(dark.classList.contains("maplibre-legend-control-dark")).toBe(true);
+
+    const none = new LegendControl({ updateDelay: 0 }).onAdd(createMockMap({ background: null }));
+    vi.runAllTimers();
+    expect(none.style.getPropertyValue("--legend-control-bg-color")).toBe("hsl(90, 23%, 95%)");
+
+    const fixed = new LegendControl({ updateDelay: 0, background: "#123456" }).onAdd(createMockMap());
+    vi.runAllTimers();
+    expect(fixed.style.getPropertyValue("--legend-control-bg-color")).toBe("#123456");
+    expect(fixed.classList.contains("maplibre-legend-control-dark")).toBe(true);
     vi.useRealTimers();
   });
 
