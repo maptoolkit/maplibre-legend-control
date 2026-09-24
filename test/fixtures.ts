@@ -27,19 +27,34 @@ export const layerOrder = new Map<string, number>([
   ["road_major_casing", 4],
   ["road_minor", 5],
   ["road_major_dark", 6],
+  ["road_major_blur_bridge", 6.5],
+  ["road_major_dark_bridge", 6.7],
   ["road_major_label", 7],
   ["poi_generic_label_rank_3", 8],
   ["place_point_label_rank_3", 9],
   ["custom-untagged", 10],
 ]);
 
-const road = (id: string, role: string, extra: Record<string, unknown>, type: string, props: Record<string, unknown>, coords: number[][]): RenderedFeature => ({
+const road = (
+  id: string,
+  role: string,
+  extra: Record<string, unknown>,
+  type: string,
+  props: Record<string, unknown>,
+  coords: number[][],
+  paint: Record<string, unknown> = {},
+): RenderedFeature => ({
   layer: {
     id,
     type: "line",
     metadata: { [KEY]: { role, group: "road", ...extra } },
-    paint: { "line-color": asToString(`rgba(${role === "casing" ? "0,0,0" : "255,80,80"},1)`), "line-width": role === "casing" ? 8 : 5 },
-    layout: {},
+    paint: {
+      "line-color": asToString(`rgba(${role === "casing" ? "0,0,0" : "255,80,80"},1)`),
+      "line-width": role === "casing" ? 1 : 5,
+      ...(role === "casing" ? { "line-gap-width": 5 } : {}),
+      ...paint,
+    },
+    layout: { "line-cap": "round", "line-join": "round" },
   },
   properties: { type, ...props },
   geometry: { type: "LineString", coordinates: coords },
@@ -65,13 +80,19 @@ export const features: RenderedFeature[] = [
   road("road_major_blur", "blur", { attachesTo: ["road_major_dark"] }, "motorway", {}, [[10, 10], [50, 10]]),
   road("road_major_casing", "casing", { attachesTo: ["road_major_dark", "road_minor"] }, "motorway", {}, [[10, 10], [50, 10]]),
   road("road_major_dark", "main", { key: "major_dark" }, "motorway", {}, [[10, 10], [50, 10]]),
+  // a second, wider road drawn by the same layers — its casing must not be picked for the motorway entry
+  road("road_major_casing", "casing", { attachesTo: ["road_major_dark", "road_minor"] }, "trunk", {}, [[60, 60], [90, 60]], { "line-gap-width": 9 }),
+  road("road_major_dark", "main", { key: "major_dark" }, "trunk", {}, [[60, 60], [90, 60]], { "line-width": 9 }),
+  // bridge duplicates: a main copy on a bridge and its shadow — neither may shape the swatch
+  road("road_major_dark_bridge", "main", { key: "major_dark", crossing: "bridge" }, "motorway", {}, [[70, 70], [80, 70]], { "line-width": 7 }),
+  road("road_major_blur_bridge", "blur", { attachesTo: ["road_major_dark", "road_major_dark_bridge"], crossing: "bridge" }, "motorway", {}, [[70, 70], [80, 70]], { "line-width": 12 }),
   {
     layer: { id: "road_major_label", type: "symbol", metadata: { [KEY]: { role: "label", group: "road", attachesTo: ["road_major_dark"] } }, paint: {}, layout: { "text-field": asToString("A22") } },
     properties: { type: "motorway", name: "A22" },
     geometry: { type: "LineString", coordinates: [[10, 10], [50, 10]] },
   },
-  // a minor road, casing attaches to it too
-  road("road_minor", "main", { key: "minor" }, "service", {}, [[100, 100], [150, 100]]),
+  // a minor road, casing attaches to it too; dashed like MapLibre reports it (NumberArray-shaped)
+  road("road_minor", "main", { key: "minor" }, "service", {}, [[100, 100], [150, 100]], { "line-dasharray": { values: [2, 3] } }),
   // dynamic landcover: two polygons of different type, one texture copy per type
   {
     layer: { id: "nature_natural", type: "fill", metadata: { [KEY]: { role: "main", group: "nature", keyProperty: "type" } }, paint: { "fill-color": asToString("rgba(120,180,90,1)") }, layout: {} },

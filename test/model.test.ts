@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLegendModel, geometryAnchor, humanize, pickLabel, valueToString } from "../src/model";
+import { buildLegendModel, geometryAnchor, humanize, pickLabel, valueToNumbers, valueToString } from "../src/model";
 import { features, layerOrder, manifest, viewport } from "./fixtures";
 
 const build = (overrides: Partial<Parameters<typeof buildLegendModel>[0]> = {}) =>
@@ -22,6 +22,24 @@ describe("buildLegendModel", () => {
     expect(motorway?.swatch.map((l) => `${l.id}:${l.role}`)).toEqual(["road_major_blur:blur", "road_major_casing:casing", "road_major_dark:main", "road_major_label:label"]);
     // the casing also attaches to the minor road, the blur does not
     expect(entry("road:minor")?.swatch.map((l) => l.id)).toEqual(["road_major_casing", "road_minor"]);
+  });
+
+  it("represents an entry by a ground-level copy and stacks copies of the very same feature", () => {
+    const motorway = entry("road:major_dark")!;
+    const main = motorway.swatch.find((l) => l.role === "main")!;
+    const casing = motorway.swatch.find((l) => l.role === "casing")!;
+    expect(main.id).toBe("road_major_dark"); // not the bridge duplicate
+    expect(main.paint["line-width"]).toBe(5); // the motorway copy, not the 9 px trunk
+    expect(casing.paint["line-gap-width"]).toBe(5); // the motorway's own casing, gap = main width
+    // crossing supporting layers (bridge shadow) never stack
+    expect(motorway.swatch.some((l) => l.id === "road_major_blur_bridge")).toBe(false);
+  });
+
+  it("only falls back to a bridge/tunnel copy when nothing else is rendered", () => {
+    const bridgeOnly = features.filter((f) => f.layer.id.endsWith("_bridge"));
+    const m = build({ features: bridgeOnly });
+    const e = m.groups.flatMap((g) => g.entries).find((x) => x.key === "road:major_dark")!;
+    expect(e.swatch.map((l) => l.id)).toEqual(["road_major_dark_bridge"]);
   });
 
   it("splits dynamic-key mains per feature value and matches their textures per value", () => {
@@ -66,6 +84,14 @@ describe("buildLegendModel", () => {
 });
 
 describe("helpers", () => {
+  it("valueToNumbers accepts arrays and NumberArray-shaped objects", () => {
+    expect(valueToNumbers([2, 3])).toEqual([2, 3]);
+    expect(valueToNumbers({ values: [0.1, 8] })).toEqual([0.1, 8]);
+    expect(valueToNumbers({ values: [] })).toBeUndefined();
+    expect(valueToNumbers("2 3")).toBeUndefined();
+    expect(valueToNumbers([1, "x"])).toBeUndefined();
+  });
+
   it("valueToString handles strings, numbers, Color/Formatted-like objects and ResolvedImage-like objects", () => {
     expect(valueToString("a")).toBe("a");
     expect(valueToString(3)).toBe("3");

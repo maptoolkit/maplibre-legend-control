@@ -75,7 +75,13 @@ describe("LegendControl", () => {
 
     const motorway = container.querySelector('[data-key="road:major_dark"]') as HTMLElement;
     expect(motorway.querySelector(".maplibre-legend-control-label")?.textContent).toBe("Hauptstraße");
-    expect(motorway.querySelectorAll(".maplibre-legend-control-stroke")).toHaveLength(3); // blur + casing + main (label is no stroke)
+    const strokes = [...motorway.querySelectorAll("path.maplibre-legend-control-stroke")];
+    expect(strokes).toHaveLength(3); // blur + casing + main (label is no stroke)
+    expect(strokes.map((p) => p.getAttribute("stroke-width"))).toEqual(["5", "7", "5"]); // casing = gap 5 + 2 × 1
+    expect(strokes[2].getAttribute("stroke-linecap")).toBe("round");
+
+    const minor = container.querySelector('[data-key="road:minor"] path.maplibre-legend-control-stroke-main') as SVGPathElement;
+    expect(minor.getAttribute("stroke-dasharray")).toBe("10 15"); // [2, 3] × width 5
 
     expect(control.getModel()?.groups).toHaveLength(3);
     vi.useRealTimers();

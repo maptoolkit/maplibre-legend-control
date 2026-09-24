@@ -49,6 +49,26 @@ export function valueToString(value: unknown): string | undefined {
   return undefined;
 }
 
+/** Numeric arrays arrive either as plain arrays or as MapLibre `NumberArray` objects (`{ values }`). */
+export function valueToNumbers(value: unknown): number[] | undefined {
+  const arr = Array.isArray(value) ? value : value && typeof value === "object" && Array.isArray((value as { values?: unknown }).values) ? (value as { values: unknown[] }).values : undefined;
+  if (!arr || !arr.length || !arr.every((v) => typeof v === "number" && Number.isFinite(v))) return undefined;
+  return arr as number[];
+}
+
+/**
+ * Identity of the underlying tile feature, so copies of one road drawn by its
+ * blur, casing and main layer can be matched (same widths, same type, same
+ * tile). Uses the feature id when the source provides one, else the
+ * properties plus the geometry's end points.
+ */
+export function featureIdentity(feature: RenderedFeature): string {
+  if (feature.id !== undefined && feature.id !== null) return `id:${feature.id}`;
+  const coords = feature.geometry && Array.isArray(feature.geometry.coordinates) ? (feature.geometry.coordinates as unknown[]) : [];
+  const flat = JSON.stringify(coords).slice(0, 80);
+  return `p:${JSON.stringify(feature.properties ?? {})}|${feature.geometry?.type ?? ""}|${flat}`;
+}
+
 export function humanize(key: string): string {
   const raw = key.includes(":") ? key.slice(key.indexOf(":") + 1) : key;
   const text = raw.replace(/[_-]+/g, " ").trim();
@@ -154,6 +174,10 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
   /** main layer id → entry keys it produced (fixed key: one; dynamic key: one per rendered value) */
   const entriesOfMain = new Map<string, Set<string>>();
   const mainTags = new Map<string, LegendLayerTag>();
+  /** entry key → rendered main copies (ground level preferred over bridges/tunnels) */
+  const mainCopies = new Map<string, Array<{ feature: RenderedFeature; tag: LegendLayerTag }>>();
+  /** entry key → identity of the representative main copy */
+  const representative = new Map<string, string>();
   const candidates = new Map<string, InstanceCandidate[]>();
   const instanceTags = new Map<string, { tag: LegendLayerTag; feature: RenderedFeature }>();
 
@@ -196,25 +220,35 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     if (isHiddenKey(entryKey)) continue;
     if (!entriesOfMain.has(feature.layer.id)) entriesOfMain.set(feature.layer.id, new Set());
     entriesOfMain.get(feature.layer.id)!.add(entryKey);
-    if (!entries.has(entryKey)) {
-      entries.set(entryKey, {
-        key: entryKey,
-        group: tag.group,
-        kind: "class",
-        label: pickLabel(manifestEntries[entryKey]?.label, language) ?? humanize(entryKey),
-        swatch: [swatchLayerOf(feature, "main", layerOrder)],
-        order: manifestEntries[entryKey]?.order ?? UNORDERED,
-      });
-    } else {
-      const entry = entries.get(entryKey)!;
-      if (!entry.swatch.some((l) => l.id === feature.layer.id)) entry.swatch.push(swatchLayerOf(feature, "main", layerOrder));
-    }
+    if (!mainCopies.has(entryKey)) mainCopies.set(entryKey, []);
+    mainCopies.get(entryKey)!.push({ feature, tag });
   }
 
-  // Pass 2 — supporting layers stack into the entries of the mains they attach to.
+  // Class entries: one main copy represents the entry — the first ground-level
+  // one (a tunnel or bridge duplicate renders differently); its identity lets
+  // the supporting layers contribute copies of the very same feature.
+  for (const [entryKey, copies] of mainCopies) {
+    const best = copies.find((c) => !c.tag.crossing) ?? copies[0];
+    representative.set(entryKey, featureIdentity(best.feature));
+    entries.set(entryKey, {
+      key: entryKey,
+      group: best.tag.group!,
+      kind: "class",
+      label: pickLabel(manifestEntries[entryKey]?.label, language) ?? humanize(entryKey),
+      swatch: [swatchLayerOf(best.feature, "main", layerOrder)],
+      order: manifestEntries[entryKey]?.order ?? UNORDERED,
+    });
+  }
+
+  // Pass 2 — supporting layers stack into the entries of the mains they attach
+  // to. Bridge/tunnel duplicates (shadows, tunnel casings) are left out; per
+  // entry and layer the copy of the representative feature wins, so casing
+  // gap and main width belong to the same road at the same zoom.
+  const support = new Map<string, Map<string, { feature: RenderedFeature; role: string; score: number }>>();
   for (const feature of features) {
     const tag = tagOf(feature);
-    if (!tag || tag.hidden || !tag.attachesTo?.length) continue;
+    if (!tag || tag.hidden || tag.crossing || !tag.attachesTo?.length) continue;
+    const identity = featureIdentity(feature);
     for (const mainId of tag.attachesTo) {
       const produced = entriesOfMain.get(mainId);
       if (!produced) continue;
@@ -228,10 +262,18 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
         targetKeys = [...produced];
       }
       for (const k of targetKeys) {
-        const entry = entries.get(k);
-        if (entry && !entry.swatch.some((l) => l.id === feature.layer.id)) entry.swatch.push(swatchLayerOf(feature, tag.role ?? "support", layerOrder));
+        if (!entries.has(k)) continue;
+        const score = representative.get(k) === identity ? 1 : 0;
+        if (!support.has(k)) support.set(k, new Map());
+        const perLayer = support.get(k)!;
+        const current = perLayer.get(feature.layer.id);
+        if (!current || score > current.score) perLayer.set(feature.layer.id, { feature, role: tag.role ?? "support", score });
       }
     }
+  }
+  for (const [k, perLayer] of support) {
+    const entry = entries.get(k)!;
+    for (const { feature, role } of perLayer.values()) entry.swatch.push(swatchLayerOf(feature, role, layerOrder));
   }
 
   // Pass 3 — one instance entry per key: inside the margin first, then lowest rank, then closest to the centre.

@@ -140,11 +140,9 @@
   inset: 0;
   background-repeat: repeat;
 }
-.maplibre-legend-control .maplibre-legend-control-stroke {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-radius: 1px;
+.maplibre-legend-control .maplibre-legend-control-swatch-line svg {
+  display: block;
+  overflow: visible;
 }
 .maplibre-legend-control .maplibre-legend-control-swatch-icon canvas {
   display: block;

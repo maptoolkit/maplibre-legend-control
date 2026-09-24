@@ -22,6 +22,8 @@ export type LegendLayerTag = {
   instance?: boolean;
   /** Feature property ranking instance candidates (lower = more prominent). */
   rankProperty?: string;
+  /** Set on bridge/tunnel duplicates of a layer; swatches prefer ground-level copies. */
+  crossing?: string;
 };
 
 export type LegendManifestItem = { label?: LegendLabel; order?: number; hidden?: boolean };
@@ -46,6 +48,8 @@ export type RenderedLayer = {
 };
 
 export type RenderedFeature = {
+  /** Tile feature id when the source provides one; copies of one feature across layers share it. */
+  id?: string | number;
   layer: RenderedLayer;
   properties: Record<string, unknown>;
   geometry: GeometryLike;

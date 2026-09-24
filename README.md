@@ -71,8 +71,11 @@ evaluated paint and layout, and builds:
 
 - **class entries** — one per rendered main layer key (motorway, forest, country
   border …), with a swatch stacked from the layer and its casing/blur/texture
-  layers using the evaluated colours, widths and dash patterns at the current
-  zoom; SDF sprite icons are recoloured with their `icon-color`;
+  layers using the evaluated colours, widths, gaps and dash patterns at the
+  current zoom. Lines are drawn as a curved SVG stroke stack, scaled together
+  when too wide; the copies come from one and the same feature, ground level
+  preferred over bridge/tunnel duplicates whose shadows and casings stay out.
+  SDF sprite icons are recoloured with their `icon-color`;
 - **instance entries** — for standalone label layers (places, waters, POIs) one
   entry per type, showing the most prominent named feature (lowest rank, edge
   features last, then the one closest to the centre) in the map's own font.

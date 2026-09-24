@@ -1,4 +1,4 @@
-import { valueToString } from "./model";
+import { valueToNumbers, valueToString } from "./model";
 import { fontStackToCss } from "./fonts";
 import type { SwatchLayer, TextStyle } from "./types";
 
@@ -11,6 +11,7 @@ export type StyleImageLike = {
 export type GetImage = (id: string) => StyleImageLike | undefined | null;
 
 const CLASS = "maplibre-legend-control";
+const SWATCH_W = 36;
 const SWATCH_H = 18;
 const MAX_ICON = 24;
 
@@ -85,37 +86,70 @@ function imageToCanvas(image: StyleImageLike, options: { color?: string; haloCol
   return canvas;
 }
 
-/** Stacked line strokes: casing/blur below, the main stroke on top, dash arrays as gradients. */
+const SVG_NS = "http://www.w3.org/2000/svg";
+/** A gentle S-curve through the swatch box, so a road reads as a road. */
+const LINE_PATH = "M 2 12.5 C 12 0.5, 24 17.5, 34 5.5";
+/** Strokes wider than this (incl. casing gaps) are scaled down together, keeping their ratios. */
+const MAX_STROKE = SWATCH_H - 4;
+
+type Stroke = { color: string; width: number; opacity: number; blur: number; dash?: number[]; cap: string; join: string; role: string };
+
+function strokeOf(layer: SwatchLayer): Stroke | undefined {
+  if (layer.type !== "line") return undefined;
+  const color = valueToString(layer.paint["line-color"]);
+  if (!color) return undefined;
+  const width = Math.max(0.5, num(layer.paint["line-width"], 1));
+  const gap = Math.max(0, num(layer.paint["line-gap-width"], 0));
+  return {
+    color,
+    // MapLibre draws a gap layer as two parallel strokes `gap` apart; drawn
+    // below the main stroke (which is `gap` wide) a single stroke of
+    // gap + 2·width looks the same — the casing outline.
+    width: gap > 0 ? gap + 2 * width : width,
+    opacity: clamp(num(layer.paint["line-opacity"], 1), 0, 1),
+    blur: Math.max(0, num(layer.paint["line-blur"], 0)),
+    // dash lengths are multiples of the line width
+    dash: valueToNumbers(layer.paint["line-dasharray"])?.map((d) => d * width),
+    cap: valueToString(layer.layout["line-cap"]) ?? "butt",
+    join: valueToString(layer.layout["line-join"]) ?? "miter",
+    role: layer.role,
+  };
+}
+
+/**
+ * Stacked line strokes on a curved path: blur/casing below, the main stroke on
+ * top, dash arrays, caps and blur from the evaluated layers. All strokes are
+ * scaled together when the widest would not fit, so casing and main keep their
+ * ratio at every zoom.
+ */
 export function createLineSwatch(layers: SwatchLayer[]): HTMLElement {
   const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-line`);
-  for (const layer of layers) {
-    if (layer.type !== "line") continue;
-    const color = valueToString(layer.paint["line-color"]);
-    if (!color) continue;
-    const width = clamp(num(layer.paint["line-width"], 1), 1, SWATCH_H - 2);
-    const gap = num(layer.paint["line-gap-width"], 0);
-    const opacity = clamp(num(layer.paint["line-opacity"], 1), 0, 1);
-    const blur = num(layer.paint["line-blur"], 0);
-    const dash = layer.paint["line-dasharray"];
+  const strokes = layers.map(strokeOf).filter((s): s is Stroke => Boolean(s));
+  if (!strokes.length) return box;
 
-    const strokes = gap > 0 ? [-(gap + width) / 2, (gap + width) / 2] : [0]; // a gap splits the stroke into two parallel lines
-    for (const offset of strokes) {
-      const s = el("span", `${CLASS}-stroke ${CLASS}-stroke-${layer.role}`);
-      s.style.height = `${width}px`;
-      s.style.top = `${(SWATCH_H - width) / 2 + offset}px`;
-      s.style.opacity = String(opacity);
-      if (blur > 0) s.style.filter = `blur(${Math.min(blur, 4)}px)`;
-      if (Array.isArray(dash) && dash.length >= 2 && dash.every((d) => typeof d === "number")) {
-        const [on, off] = dash as number[];
-        const onPx = Math.max(1, on * width);
-        const period = Math.max(2, (on + off) * width);
-        s.style.background = `repeating-linear-gradient(90deg, ${color} 0 ${onPx}px, transparent ${onPx}px ${period}px)`;
-      } else {
-        s.style.background = color;
-      }
-      box.appendChild(s);
-    }
+  const widest = Math.max(...strokes.map((s) => s.width));
+  const scale = widest > MAX_STROKE ? MAX_STROKE / widest : 1;
+
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${SWATCH_W} ${SWATCH_H}`);
+  svg.setAttribute("width", String(SWATCH_W));
+  svg.setAttribute("height", String(SWATCH_H));
+  svg.setAttribute("aria-hidden", "true");
+  for (const stroke of strokes) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("class", `${CLASS}-stroke ${CLASS}-stroke-${stroke.role}`);
+    path.setAttribute("d", LINE_PATH);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", stroke.color);
+    path.setAttribute("stroke-width", String(Math.max(0.75, stroke.width * scale)));
+    path.setAttribute("stroke-linecap", stroke.cap);
+    path.setAttribute("stroke-linejoin", stroke.join);
+    if (stroke.opacity < 1) path.setAttribute("stroke-opacity", String(stroke.opacity));
+    if (stroke.dash) path.setAttribute("stroke-dasharray", stroke.dash.map((d) => Math.max(0.5, d * scale)).join(" "));
+    if (stroke.blur > 0) path.style.filter = `blur(${Math.min(stroke.blur * scale, 3)}px)`;
+    svg.appendChild(path);
   }
+  box.appendChild(svg);
   return box;
 }
 
