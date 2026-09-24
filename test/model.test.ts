@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { buildLegendModel, geometryAnchor, humanize, pickLabel, valueToNumbers, valueToString } from "../src/model";
-import { features, layerOrder, manifest, viewport } from "./fixtures";
+import { features, layerOrder, manifest, queryFixtures, viewport } from "./fixtures";
+
+/** The control's edge test, reproduced for the fixtures: cut = touches one of the four 5 % bands. */
+const fullyVisible = (list = features) => {
+  const w = viewport.width, h = viewport.height, bx = Math.round(w * 0.05), by = Math.round(h * 0.05);
+  const bands: Array<[[number, number], [number, number]]> = [[[0, 0], [w, by]], [[0, h - by], [w, h]], [[0, 0], [bx, h]], [[w - bx, 0], [w, h]]];
+  const cut = new Set(bands.flatMap((b) => queryFixtures(list, b)).filter((f) => f.layer.type === "symbol"));
+  return (f: (typeof features)[number]) => !cut.has(f);
+};
 
 const build = (overrides: Partial<Parameters<typeof buildLegendModel>[0]> = {}) =>
-  buildLegendModel({ features, manifest, layerOrder, language: "de", viewport, edgeMargin: 24, ...overrides });
+  buildLegendModel({ features, manifest, layerOrder, language: "de", viewport, isFullyVisible: fullyVisible(), ...overrides });
 
 describe("buildLegendModel", () => {
   const model = build();
@@ -56,7 +64,7 @@ describe("buildLegendModel", () => {
     expect(group("nature")?.entries.map((e) => e.key)).toEqual(["nature:wood", "nature:farmland"]); // ordered before unordered
   });
 
-  it("picks one named feature per type: inside the edge margin first, then lowest rank", () => {
+  it("picks one named feature per type among the fully visible ones: lowest rank first", () => {
     const town = entry("place:town");
     expect(town).toMatchObject({ kind: "instance", name: "Tulln an der Donau", label: "Stadt" });
     expect(town?.text).toMatchObject({ fontStack: ["Rosario Bold"], size: 14, color: "rgba(40,40,40,1)", haloWidth: 1, anchor: undefined });
@@ -73,10 +81,11 @@ describe("buildLegendModel", () => {
     expect(plain.groups.find((g) => g.id === "place")?.entries.map((e) => e.key).sort()).toEqual(["place:hamlet", "place:town", "place:village"]);
   });
 
-  it("falls back to the edge feature when nothing else is on screen", () => {
+  it("drops labels cut by the edge buffer instead of falling back to them", () => {
     const only = features.filter((f) => f.properties.name === "Randstadt");
-    const m = build({ features: only });
-    expect(m.groups[0].entries[0]).toMatchObject({ key: "place:town", name: "Randstadt" });
+    expect(build({ features: only, isFullyVisible: fullyVisible(only) }).groups).toEqual([]);
+    // without a visibility test every rendered label counts (edgeBuffer: 0)
+    expect(build({ features: only, isFullyVisible: undefined }).groups[0]?.entries[0]).toMatchObject({ key: "place:town", name: "Randstadt" });
   });
 
   it("drops entries hidden by the manifest and layers without a tag", () => {

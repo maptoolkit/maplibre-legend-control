@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Map as MaplibreMap } from "maplibre-gl";
 import { LegendControl } from "../src/LegendControl";
-import { features, layerOrder, manifest } from "./fixtures";
+import { features, layerOrder, manifest, queryFixtures } from "./fixtures";
 
 type MockMap = MaplibreMap & { _fire: (event: string) => void; _locale: Record<string, string> };
 
@@ -27,7 +27,7 @@ function createMockMap(options: { withFeatures?: boolean; background?: string | 
     getCanvas: () => canvas,
     getContainer: () => mapContainer,
     getStyle: () => ({ version: 8, sources: {}, layers, metadata: { "maptoolkit:legend": manifest } }),
-    queryRenderedFeatures: () => (options.withFeatures === false ? [] : features),
+    queryRenderedFeatures: (box?: [[number, number], [number, number]]) => (options.withFeatures === false ? [] : queryFixtures(features, box)),
     project: ([x, y]: [number, number]) => ({ x, y }),
     getImage: () => undefined,
     // MapLibre's internal style object: evaluated paint of a layer at the current zoom
@@ -154,6 +154,29 @@ describe("LegendControl", () => {
     vi.runAllTimers();
     expect(fixed.style.getPropertyValue("--legend-control-bg-color")).toBe("#123456");
     expect(fixed.classList.contains("maplibre-legend-control-dark")).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it("queries the four edge bands and leaves labels touching them out", () => {
+    vi.useFakeTimers();
+    const map = createMockMap();
+    const spy = vi.spyOn(map, "queryRenderedFeatures");
+    const control = new LegendControl({ language: "de", updateDelay: 0 }).onAdd(map);
+    vi.runAllTimers();
+    // one full query + four band queries (top, bottom, left, right — 5 % of 400×300)
+    expect(spy.mock.calls.map((c) => JSON.stringify(c[0] ?? null))).toEqual([
+      "null",
+      JSON.stringify([[0, 0], [400, 15]]),
+      JSON.stringify([[0, 285], [400, 300]]),
+      JSON.stringify([[0, 0], [20, 300]]),
+      JSON.stringify([[380, 0], [400, 300]]),
+    ]);
+    const town = control.querySelector('[data-key="place:town"] .maplibre-legend-control-symbol-text');
+    expect(town?.textContent).toBe("Tulln an der Donau"); // Randstadt at x = 5 sits in the left band
+
+    const all = new LegendControl({ language: "de", updateDelay: 0, edgeBuffer: 0 }).onAdd(createMockMap());
+    vi.runAllTimers();
+    expect(all.querySelector('[data-key="place:town"] .maplibre-legend-control-symbol-text')?.textContent).toBe("Randstadt"); // rank 5 beats 12 once the edge no longer matters
     vi.useRealTimers();
   });
 

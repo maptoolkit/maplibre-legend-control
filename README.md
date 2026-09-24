@@ -82,8 +82,9 @@ evaluated paint and layout, and builds:
   keeps its dashed shoreline). SDF sprite icons are recoloured with their
   `icon-color`;
 - **instance entries** — for standalone label layers (places, waters, POIs) one
-  entry per type, showing the most prominent feature (lowest rank, edge
-  features last, then the one closest to the centre) as the map draws it: the
+  entry per type, showing the most prominent feature among those whose label
+  lies entirely inside the map minus a 5 % edge buffer (lowest rank, then the
+  one closest to the centre) as the map draws it: the
   name in the map's own font, size, colour and halo, and for POIs the icon with
   the name placed by `text-anchor`/`text-offset` — text below the icon, beside
   it, or over it.
@@ -110,7 +111,7 @@ without a tag are ignored. The contract is documented in
 | ------------- | ---------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `collapsed`   | `boolean`  | `false`                                   | Start collapsed to the title; updates are deferred until the panel is opened.                      |
 | `language`    | `string`   | `<html lang>`, else browser language      | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key. |
-| `edgeMargin`  | `number`   | `24`                                      | Named features within this many pixels of the viewport edge lose against features further inside. |
+| `edgeBuffer`  | `number`   | `0.05`                                    | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label. |
 | `groups`      | `string[]` | all                                       | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`). |
 | `updateDelay` | `number`   | `100`                                     | Debounce in ms between the map's `idle` event and the update.                                      |
 | `maxHeightRatio` | `number` | `0.6`                                    | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width. |

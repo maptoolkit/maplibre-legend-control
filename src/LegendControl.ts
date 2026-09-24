@@ -1,5 +1,5 @@
 import type { Map, IControl, ControlPosition } from "maplibre-gl";
-import { buildLegendModel, valueToString } from "./model";
+import { buildLegendModel, featureIdentity, valueToString } from "./model";
 import { createSwatch, createSymbolPreview, lineVariantFor, type GetImage } from "./swatch";
 import { LEGEND_METADATA_KEY, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
@@ -19,12 +19,12 @@ export type LegendControlOptions = {
    */
   language?: string;
   /**
-   * Named features whose anchor lies within this many pixels of the viewport
-   * edge lose against features further inside when the legend picks the
-   * representative of a type — their labels are usually cut off.
-   * @defaultValue `24`
+   * Only labels whose rendered box (icon and text) lies entirely inside the
+   * visible map minus this fraction of the width/height on every side are
+   * listed. `0` accepts every rendered label, however much the edge cuts it.
+   * @defaultValue `0.05`
    */
-  edgeMargin?: number;
+  edgeBuffer?: number;
   /**
    * Restrict the legend to these groups (`road`, `water`, `nature`, `border`,
    * `building`, `relief`, `place`, `poi`). All groups when omitted.
@@ -58,7 +58,7 @@ export type LegendControlOptions = {
  */
 export const defaultLegendControlOptions: LegendControlOptions = {
   collapsed: false,
-  edgeMargin: 24,
+  edgeBuffer: 0.05,
   updateDelay: 100,
   maxHeightRatio: 0.6,
   background: "auto",
@@ -210,6 +210,8 @@ export class LegendControl implements IControl {
     const manifest = (style?.metadata as Record<string, unknown> | undefined)?.[LEGEND_METADATA_KEY] as LegendManifest | undefined;
     const layerOrder = new globalThis.Map<string, number>((style?.layers ?? []).map((l, i) => [l.id, i]));
     const canvas = map.getCanvas();
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
     const features = map.queryRenderedFeatures() as unknown as RenderedFeature[];
 
     let model = buildLegendModel({
@@ -217,12 +219,8 @@ export class LegendControl implements IControl {
       manifest,
       layerOrder,
       language: this.options.language ?? detectLanguage(),
-      viewport: {
-        width: canvas.clientWidth,
-        height: canvas.clientHeight,
-        project: (lngLat) => map.project(lngLat),
-      },
-      edgeMargin: this.options.edgeMargin ?? 24,
+      viewport: { width, height, project: (lngLat) => map.project(lngLat) },
+      isFullyVisible: this._fullyVisibleTest(width, height),
     });
     if (this.options.groups) {
       const allowed = new Set(this.options.groups);
@@ -257,6 +255,34 @@ export class LegendControl implements IControl {
     set("--legend-control-border-color", "rgba(255, 255, 255, 0.16)");
     set("--legend-control-bg-subtle", "rgba(255, 255, 255, 0.08)");
     container.classList.toggle(`${CLASS}-dark`, dark);
+  }
+
+  /**
+   * A label is fully visible when its rendered box touches none of the four
+   * edge bands (`edgeBuffer` of the width/height each). `queryRenderedFeatures`
+   * with a box returns every symbol whose placed icon+text box intersects it,
+   * so querying the bands yields exactly the labels cut by the edge or the
+   * buffer — no estimate of text extents needed.
+   */
+  private _fullyVisibleTest(width: number, height: number): ((feature: RenderedFeature) => boolean) | undefined {
+    const map = this._map;
+    const buffer = this.options.edgeBuffer ?? 0.05;
+    if (!map || buffer <= 0 || width <= 0 || height <= 0) return undefined;
+    const bx = Math.max(1, Math.round(width * buffer));
+    const by = Math.max(1, Math.round(height * buffer));
+    const bands: Array<[[number, number], [number, number]]> = [
+      [[0, 0], [width, by]], // top
+      [[0, height - by], [width, height]], // bottom
+      [[0, 0], [bx, height]], // left
+      [[width - bx, 0], [width, height]], // right
+    ];
+    const cut = new Set<string>();
+    for (const band of bands) {
+      for (const f of map.queryRenderedFeatures(band) as unknown as RenderedFeature[]) {
+        if (f.layer.type === "symbol") cut.add(`${f.layer.id}|${featureIdentity(f)}`);
+      }
+    }
+    return (feature) => !cut.has(`${feature.layer.id}|${featureIdentity(feature)}`);
   }
 
   /** Cap the panel at `maxHeightRatio` of the map's height and at the map's width; the list scrolls. */

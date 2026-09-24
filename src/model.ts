@@ -29,8 +29,12 @@ export type BuildLegendModelInput = {
   /** Language code for manifest labels (`de`, `en`, …); falls back to `en`, then to the first label. */
   language: string;
   viewport: Viewport;
-  /** Features whose anchor lies within this many CSS pixels of the viewport edge lose against inner ones. */
-  edgeMargin: number;
+  /**
+   * Whether a rendered label (its whole icon + text box) lies entirely inside
+   * the visible area; labels for which this returns `false` are not listed.
+   * Omitted = every rendered label counts.
+   */
+  isFullyVisible?: (feature: RenderedFeature) => boolean;
 };
 
 /** Order used for entries/groups the manifest does not order. */
@@ -172,7 +176,6 @@ type InstanceCandidate = {
   feature: RenderedFeature;
   name?: string;
   rank: number;
-  inside: boolean;
   distance: number;
 };
 
@@ -180,11 +183,11 @@ type InstanceCandidate = {
  * Build the legend model for one viewport: class entries for every rendered
  * main layer (with their supporting layers stacked into the swatch) and one
  * instance entry per key of the standalone label layers, choosing the most
- * prominent named feature (lowest rank, edge features last, then the one
- * closest to the viewport centre).
+ * prominent feature among those fully visible (lowest rank, named before
+ * unnamed, then the one closest to the viewport centre).
  */
 export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
-  const { features, layerOrder, language, viewport, edgeMargin } = input;
+  const { features, layerOrder, language, viewport, isFullyVisible } = input;
   const manifest = input.manifest ?? {};
   const manifestEntries = manifest.entries ?? {};
   const manifestGroups = manifest.groups ?? {};
@@ -219,18 +222,17 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       if (isHiddenKey(entryKey)) continue;
       const name = valueToString(feature.layer.layout?.["text-field"])?.trim() || undefined;
       if (!name && !feature.layer.layout?.["icon-image"]) continue; // nothing to show
+      if (isFullyVisible && !isFullyVisible(feature)) continue; // cut by the edge (or the buffer) — not a legend candidate
       const rankRaw = tag.rankProperty ? Number(feature.properties?.[tag.rankProperty]) : NaN;
       const rank = Number.isFinite(rankRaw) ? rankRaw : Number.POSITIVE_INFINITY;
       const anchor = geometryAnchor(feature.geometry);
-      let inside = false;
       let distance = Number.POSITIVE_INFINITY;
       if (anchor) {
         const p = viewport.project(anchor);
-        inside = p.x >= edgeMargin && p.y >= edgeMargin && p.x <= viewport.width - edgeMargin && p.y <= viewport.height - edgeMargin;
         distance = Math.hypot(p.x - viewport.width / 2, p.y - viewport.height / 2);
       }
       if (!candidates.has(entryKey)) candidates.set(entryKey, []);
-      candidates.get(entryKey)!.push({ feature, name, rank, inside, distance });
+      candidates.get(entryKey)!.push({ feature, name, rank, distance });
       if (!instanceTags.has(entryKey)) instanceTags.set(entryKey, { tag, feature });
       continue;
     }
@@ -322,9 +324,9 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     }
   }
 
-  // Pass 3 — one instance entry per key: inside the margin first, then lowest rank, named before unnamed, then closest to the centre.
+  // Pass 3 — one instance entry per key: lowest rank, named before unnamed, then closest to the centre.
   for (const [entryKey, list] of candidates) {
-    list.sort((a, b) => Number(b.inside) - Number(a.inside) || a.rank - b.rank || Number(Boolean(b.name)) - Number(Boolean(a.name)) || a.distance - b.distance);
+    list.sort((a, b) => a.rank - b.rank || Number(Boolean(b.name)) - Number(Boolean(a.name)) || a.distance - b.distance);
     const best = list[0];
     const { tag } = instanceTags.get(entryKey)!;
     const layout = best.feature.layer.layout ?? {};

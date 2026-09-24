@@ -80,6 +80,22 @@ const place = (name: string, type: string, rank: number, lngLat: [number, number
 /** Viewport 400×300; `project` maps lng/lat 1:1 onto pixels for readable fixtures. */
 export const viewport = { width: 400, height: 300, project: ([x, y]: [number, number]) => ({ x, y }) };
 
+/**
+ * Mimics `map.queryRenderedFeatures(box)` for the fixtures: symbols count as
+ * intersecting a box when their anchor lies inside it (a stand-in for the
+ * placed icon+text box), other geometries always match.
+ */
+export function queryFixtures(list: RenderedFeature[], box?: [[number, number], [number, number]]): RenderedFeature[] {
+  if (!box) return list;
+  const [[x0, y0], [x1, y1]] = box;
+  return list.filter((f) => {
+    if (f.layer.type !== "symbol") return true;
+    const c = f.geometry?.coordinates as [number, number] | undefined;
+    if (!c || typeof c[0] !== "number") return true;
+    return c[0] >= x0 && c[0] <= x1 && c[1] >= y0 && c[1] <= y1;
+  });
+}
+
 export const features: RenderedFeature[] = [
   // motorway: three copies of one road (blur, casing, main) + its label
   road("road_major_blur", "blur", { attachesTo: ["road_major_dark"] }, "motorway", {}, [[10, 10], [50, 10]]),
@@ -120,7 +136,7 @@ export const features: RenderedFeature[] = [
     geometry: { type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
   },
   // places: two towns (one at the edge, one inside with worse rank), a village; the inside one must win
-  place("Randstadt", "town", 5, [5, 150]), // 5 px from the left edge — within the 24 px margin
+  place("Randstadt", "town", 5, [5, 150]), // 5 px from the left edge — inside the 5 % buffer (20 px), cut off
   place("Tulln an der Donau", "town", 12, [200, 150]),
   place("Tulln an der Donau", "town", 12, [200, 150]), // duplicate copy from a neighbouring tile
   place("Langenlebarn", "village", 15, [220, 160], "Rosario Regular"),
