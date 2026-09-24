@@ -54,3 +54,31 @@ describe("line variants", () => {
     expect(createLineSwatch([layer], LINE_VARIANTS).querySelector("path")?.getAttribute("d")).toBe(a); // wraps around
   });
 });
+
+describe("wide strokes", () => {
+  const mk = (id: string, role: string, width: number, gap = 0) => ({
+    id,
+    type: "line",
+    role,
+    order: role === "casing" ? 0 : 1,
+    paint: { "line-color": "rgba(0,0,0,1)", "line-width": width, ...(gap ? { "line-gap-width": gap } : {}) },
+    layout: { "line-cap": "round" },
+  });
+
+  it("scales the stack so the widest stroke plus the curve fits the box, keeping ratios", () => {
+    // z18 motorway: 24 px main, casing 2 px around a 24 px gap = 28 px
+    const svg = createLineSwatch([mk("casing", "casing", 2, 24), mk("main", "main", 24)]);
+    const widths = [...svg.querySelectorAll("path")].map((p) => Number(p.getAttribute("stroke-width")));
+    expect(Math.max(...widths)).toBeCloseTo(16, 5); // 26 px box − 10 px curve extent
+    expect(widths[1] / widths[0]).toBeCloseTo(24 / 28, 5);
+    // round caps are pulled in by half the widest stroke
+    expect(svg.querySelector("g")?.getAttribute("transform")).toMatch(/^translate\(8 0\) scale\(/);
+    expect(svg.querySelector("path")?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+  });
+
+  it("leaves narrow stacks unscaled and barely inset", () => {
+    const svg = createLineSwatch([mk("main", "main", 3)]);
+    expect(svg.querySelector("path")?.getAttribute("stroke-width")).toBe("3");
+    expect(svg.querySelector("g")?.getAttribute("transform")).toMatch(/^translate\(1.5 0\)/);
+  });
+});

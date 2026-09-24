@@ -12,7 +12,7 @@ export type GetImage = (id: string) => StyleImageLike | undefined | null;
 
 const CLASS = "maplibre-legend-control";
 const SWATCH_W = 56;
-const SWATCH_H = 18;
+const SWATCH_H = 26;
 const MAX_ICON = 24;
 
 const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
@@ -93,14 +93,20 @@ const SVG_NS = "http://www.w3.org/2000/svg";
  * get different bends, an entry keeps its bend across updates.
  */
 const LINE_PATHS = [
-  "M 3 12.5 C 16 1.5, 30 17.5, 53 5.5",
-  "M 3 5.5 C 18 16.5, 34 1.5, 53 12.5",
-  "M 3 10 C 12 2, 22 2, 30 9 S 46 16, 53 7",
-  "M 3 14 C 18 14, 30 3, 53 4",
-  "M 3 4 C 12 16, 36 16, 53 12",
+  "M 3 17 C 16 8, 30 18, 53 9",
+  "M 3 9 C 18 18, 34 8, 53 17",
+  "M 3 14 C 12 8, 22 8, 30 13 S 46 18, 53 12",
+  "M 3 18 C 18 18, 30 8, 53 9",
+  "M 3 8 C 12 18, 36 18, 53 17",
 ];
-/** Strokes wider than this (incl. casing gaps) are scaled down together, keeping their ratios. */
-const MAX_STROKE = SWATCH_H - 4;
+/** Vertical extent of the curves above (all stay within y = 8…18). */
+const PATH_EXTENT = 10;
+/**
+ * Strokes wider than this (incl. casing gaps) are scaled down together, keeping
+ * their ratios: half the stroke lies above/below the curve, so curve extent +
+ * widest stroke must fit the box height.
+ */
+const MAX_STROKE = SWATCH_H - PATH_EXTENT;
 
 type Stroke = { color: string; width: number; opacity: number; blur: number; dash?: number[]; cap: string; join: string; role: string };
 
@@ -146,11 +152,19 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
   svg.setAttribute("width", String(SWATCH_W));
   svg.setAttribute("height", String(SWATCH_H));
   svg.setAttribute("aria-hidden", "true");
+  // Round caps of wide strokes would poke out of the box: pull the curve's ends
+  // in by half the widest stroke. Stroke widths are unaffected by the transform
+  // (vector-effect: non-scaling-stroke), only the curve gets a little shorter.
+  const inset = Math.min(12, (widest * scale) / 2);
+  const group = document.createElementNS(SVG_NS, "g");
+  if (inset > 0) group.setAttribute("transform", `translate(${inset} 0) scale(${(SWATCH_W - 2 * inset) / SWATCH_W} 1)`);
+  svg.appendChild(group);
   for (const stroke of strokes) {
     const path = document.createElementNS(SVG_NS, "path");
     path.setAttribute("class", `${CLASS}-stroke ${CLASS}-stroke-${stroke.role}`);
     path.setAttribute("d", d);
     path.setAttribute("fill", "none");
+    path.setAttribute("vector-effect", "non-scaling-stroke");
     path.setAttribute("stroke", stroke.color);
     path.setAttribute("stroke-width", String(Math.max(0.75, stroke.width * scale)));
     path.setAttribute("stroke-linecap", stroke.cap);
@@ -158,7 +172,7 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
     if (stroke.opacity < 1) path.setAttribute("stroke-opacity", String(stroke.opacity));
     if (stroke.dash) path.setAttribute("stroke-dasharray", stroke.dash.map((d) => Math.max(0.5, d * scale)).join(" "));
     if (stroke.blur > 0) path.style.filter = `blur(${Math.min(stroke.blur * scale, 3)}px)`;
-    svg.appendChild(path);
+    group.appendChild(path);
   }
   box.appendChild(svg);
   return box;

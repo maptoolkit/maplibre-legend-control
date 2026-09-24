@@ -19,7 +19,8 @@
   --legend-control-color-primary: #4054a5;
   --legend-control-width: 280px;
   --legend-control-swatch-width: 56px;
-  --legend-control-swatch-height: 18px;
+  --legend-control-swatch-height: 26px;
+  --legend-control-row-height: 32px;
 
   box-sizing: border-box;
   /* grows with its content so no label is ever cut; min = the default width,
@@ -120,7 +121,7 @@
   align-items: center;
   justify-self: center; /* centred entries share the column's centre axis */
   min-width: var(--legend-control-swatch-width);
-  min-height: 24px;
+  min-height: var(--legend-control-row-height);
   padding: 3px 0;
 }
 .maplibre-legend-control .maplibre-legend-control-visual-start {
@@ -131,6 +132,10 @@
 }
 .maplibre-legend-control .maplibre-legend-control-label {
   min-width: 0;
+  min-height: var(--legend-control-row-height);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   padding: 3px 0;
   text-align: right;
   color: var(--legend-control-color-fg-muted);
