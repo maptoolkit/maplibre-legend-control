@@ -88,7 +88,10 @@ evaluated paint and layout, and builds:
 
 Every row follows one rule: **left what the map shows, right the explanation** —
 a stroke stack or fill for a class entry, the symbol itself for an instance
-entry; the manifest label (or the humanized key) on the right.
+entry; the manifest label (or the humanized key) on the right, right-aligned.
+The list is one grid across all groups, so the left column is as wide as the
+widest symbol and centred labels share one centre axis; left- or right-justified
+labels sit at the column's edge.
 
 Custom layers take part when they carry the same tag; layers without a tag are
 ignored. The contract is documented in
@@ -103,6 +106,7 @@ ignored. The contract is documented in
 | `edgeMargin`  | `number`   | `24`                                      | Named features within this many pixels of the viewport edge lose against features further inside. |
 | `groups`      | `string[]` | all                                       | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`). |
 | `updateDelay` | `number`   | `100`                                     | Debounce in ms between the map's `idle` event and the update.                                      |
+| `maxHeightRatio` | `number` | `0.4`                                    | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width. |
 
 ## Methods
 

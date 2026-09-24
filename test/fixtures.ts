@@ -34,6 +34,7 @@ export const layerOrder = new Map<string, number>([
   ["road_major_dark_bridge", 6.7],
   ["road_major_label", 7],
   ["poi_generic_label_rank_3", 8],
+  ["poi_peak_label_rank_3", 8.5],
   ["place_point_label_rank_3", 9],
   ["road_hiking_label", 9.5],
   ["custom-untagged", 10],
@@ -155,6 +156,18 @@ export const features: RenderedFeature[] = [
     },
     properties: { type: "fountain", rank_new: 18 },
     geometry: { type: "Point", coordinates: [210, 110] },
+  },
+  // a peak: text-only label, left-justified (the template's poi_peak_label layers)
+  {
+    layer: {
+      id: "poi_peak_label_rank_3",
+      type: "symbol",
+      metadata: { [KEY]: { role: "label", group: "poi", instance: true, keyProperty: "type", rankProperty: "rank_new" } },
+      paint: { "text-color": asToString("rgba(90,60,30,1)") },
+      layout: { "text-field": asToString("Großglockner\n3798 m"), "text-font": ["Rosario Medium Italic"], "text-size": 11, "text-anchor": "center", "text-justify": "left" },
+    },
+    properties: { type: "peak", rank_new: 5 },
+    geometry: { type: "Point", coordinates: [300, 120] },
   },
   // untagged custom layer → ignored
   { layer: { id: "custom-untagged", type: "fill", paint: {}, layout: {} }, properties: { type: "x" }, geometry: { type: "Point", coordinates: [1, 1] } },

@@ -35,6 +35,13 @@ export type LegendControlOptions = {
    * @defaultValue `100`
    */
   updateDelay?: number;
+  /**
+   * Maximum height of the legend as a fraction of the map container's height;
+   * the list scrolls beyond it. The width follows the content (no label is
+   * clipped) up to the map's width.
+   * @defaultValue `0.4`
+   */
+  maxHeightRatio?: number;
 };
 
 /**
@@ -44,6 +51,7 @@ export const defaultLegendControlOptions: LegendControlOptions = {
   collapsed: false,
   edgeMargin: 24,
   updateDelay: 100,
+  maxHeightRatio: 0.4,
 };
 
 const CLASS = "maplibre-legend-control";
@@ -84,6 +92,7 @@ export class LegendControl implements IControl {
   private _model?: LegendModel;
   private _dirty = true;
   private _onIdle = () => this._scheduleUpdate();
+  private _onResize = () => this._fitToMap();
 
   /**
    * @param options - Options for configuring the legend control.
@@ -128,6 +137,8 @@ export class LegendControl implements IControl {
     this._container.appendChild(this._list);
 
     map.on("idle", this._onIdle);
+    map.on("resize", this._onResize);
+    this._fitToMap();
     this._scheduleUpdate();
 
     return this._container;
@@ -137,6 +148,7 @@ export class LegendControl implements IControl {
     if (this._timer) clearTimeout(this._timer);
     this._timer = undefined;
     this._map?.off("idle", this._onIdle);
+    this._map?.off("resize", this._onResize);
     if (this._container?.parentNode) {
       this._container.parentNode.removeChild(this._container);
     }
@@ -206,6 +218,22 @@ export class LegendControl implements IControl {
     this._model = model;
     this._dirty = false;
     this._render(model);
+    this._fitToMap();
+  }
+
+  /** Cap the panel at `maxHeightRatio` of the map's height and at the map's width; the list scrolls. */
+  private _fitToMap() {
+    const map = this._map;
+    if (!map || !this._container || !this._list) return;
+    const box = map.getContainer();
+    const height = box?.clientHeight ?? 0;
+    const width = box?.clientWidth ?? 0;
+    if (height > 0) {
+      const ratio = this.options.maxHeightRatio ?? 0.4;
+      const header = this._header?.offsetHeight ?? 0;
+      this._list.style.maxHeight = `${Math.max(48, Math.round(height * ratio) - header)}px`;
+    }
+    if (width > 0) this._container.style.maxWidth = `${Math.max(160, width - 20)}px`;
   }
 
   private _scheduleUpdate() {
@@ -254,9 +282,13 @@ export class LegendControl implements IControl {
         li.classList.add(`${CLASS}-entry`, `${CLASS}-entry-${entry.kind}`);
         li.dataset.key = entry.key;
 
-        // left: what the map shows (swatch of the layer stack, or the symbol with its label); right: the explanation
+        // left: what the map shows (swatch of the layer stack, or the symbol with its label); right: the explanation.
+        // Centred text shares the column's centre axis; left/right-justified labels sit at the column's edge.
         const visual = document.createElement("span");
         visual.classList.add(`${CLASS}-visual`);
+        const justify = entry.kind === "instance" ? entry.text?.justify : undefined;
+        if (justify === "left") visual.classList.add(`${CLASS}-visual-start`);
+        else if (justify === "right") visual.classList.add(`${CLASS}-visual-end`);
         visual.appendChild(entry.kind === "instance" ? createSymbolPreview(entry, getImage) : createSwatch(entry.swatch, getImage, lineVariantFor(entry.key)));
         li.appendChild(visual);
 

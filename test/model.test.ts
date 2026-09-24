@@ -72,7 +72,7 @@ describe("buildLegendModel", () => {
 
   it("drops entries hidden by the manifest and layers without a tag", () => {
     expect(entry("poi:bench")).toBeUndefined();
-    expect(model.groups.find((g) => g.id === "poi")?.entries.map((e) => e.key)).toEqual(["poi:fountain"]); // the bench is hidden
+    expect(model.groups.find((g) => g.id === "poi")?.entries.map((e) => e.key)).toEqual(["poi:fountain", "poi:peak"]); // the bench is hidden
     expect(model.groups.flatMap((g) => g.entries).some((e) => e.swatch.some((l) => l.id === "custom-untagged"))).toBe(false);
   });
 

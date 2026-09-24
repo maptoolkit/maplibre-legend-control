@@ -18,12 +18,14 @@
   --legend-control-color-fg-muted: #656776;
   --legend-control-color-primary: #4054a5;
   --legend-control-width: 280px;
-  --legend-control-max-height: 60vh;
   --legend-control-swatch-width: 56px;
   --legend-control-swatch-height: 18px;
 
   box-sizing: border-box;
-  width: var(--legend-control-width);
+  /* grows with its content so no label is ever cut; min = the default width,
+     max + list height are set by the control from the map container's size */
+  width: max-content;
+  min-width: var(--legend-control-width);
   max-width: 100%;
   font-family: var(--legend-control-font-family);
   font-size: 13px;
@@ -72,21 +74,33 @@
   transform: rotate(-45deg) translateY(2px);
 }
 
-/* list */
+/* list — ONE grid across all groups: the left column is as wide as the widest
+   swatch/symbol anywhere in the legend, so centred symbols share one axis and
+   nothing gets clipped; group headings span both columns. */
 .maplibre-legend-control .maplibre-legend-control-list {
-  max-height: var(--legend-control-max-height);
+  display: grid;
+  grid-template-columns: max-content minmax(72px, 1fr);
+  column-gap: var(--legend-control-space-3);
+  align-items: center;
   overflow: auto;
   padding: 0 var(--legend-control-space-4) var(--legend-control-space-3);
   border-top: 1px solid var(--legend-control-border-color);
+}
+.maplibre-legend-control .maplibre-legend-control-group,
+.maplibre-legend-control .maplibre-legend-control-entries,
+.maplibre-legend-control .maplibre-legend-control-entry {
+  display: contents;
 }
 .maplibre-legend-control.maplibre-legend-control-collapsed .maplibre-legend-control-list {
   display: none;
 }
 .maplibre-legend-control .maplibre-legend-control-empty {
+  grid-column: 1 / -1;
   margin: var(--legend-control-space-3) 0 0;
   color: var(--legend-control-color-fg-muted);
 }
 .maplibre-legend-control .maplibre-legend-control-group-name {
+  grid-column: 1 / -1;
   margin: var(--legend-control-space-3) 0 var(--legend-control-space-1);
   font-size: 11px;
   font-weight: 700;
@@ -99,25 +113,25 @@
   padding: 0;
   list-style: none;
 }
-/* entry row: left the map's rendering (swatch or symbol), right the explanation */
-.maplibre-legend-control .maplibre-legend-control-entry {
-  display: flex;
+/* entry row: left the map's rendering (swatch or symbol), right the explanation.
+   The row is display: contents, so padding lives on the two cells. */
+.maplibre-legend-control .maplibre-legend-control-visual {
+  display: inline-flex;
   align-items: center;
-  gap: var(--legend-control-space-3);
+  justify-self: center; /* centred entries share the column's centre axis */
+  min-width: var(--legend-control-swatch-width);
   min-height: 24px;
   padding: 3px 0;
 }
-.maplibre-legend-control .maplibre-legend-control-visual {
-  flex: 0 1 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: var(--legend-control-swatch-width);
-  max-width: 58%;
+.maplibre-legend-control .maplibre-legend-control-visual-start {
+  justify-self: start;
+}
+.maplibre-legend-control .maplibre-legend-control-visual-end {
+  justify-self: end;
 }
 .maplibre-legend-control .maplibre-legend-control-label {
-  flex: 1 1 auto;
   min-width: 0;
+  padding: 3px 0;
   text-align: right;
   color: var(--legend-control-color-fg-muted);
 }

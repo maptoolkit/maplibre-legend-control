@@ -11,6 +11,9 @@ function createMockMap(options: { withFeatures?: boolean } = {}): MockMap {
   const canvas = document.createElement("canvas");
   Object.defineProperty(canvas, "clientWidth", { value: 400 });
   Object.defineProperty(canvas, "clientHeight", { value: 300 });
+  const mapContainer = document.createElement("div");
+  Object.defineProperty(mapContainer, "clientWidth", { value: 400 });
+  Object.defineProperty(mapContainer, "clientHeight", { value: 300 });
   const layers = [...layerOrder.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => ({ id, type: "line", source: "mtk" }));
   return {
     on: (event: string, listener: () => void) => {
@@ -20,6 +23,7 @@ function createMockMap(options: { withFeatures?: boolean } = {}): MockMap {
       listeners[event] = (listeners[event] ?? []).filter((l) => l !== listener);
     },
     getCanvas: () => canvas,
+    getContainer: () => mapContainer,
     getStyle: () => ({ version: 8, sources: {}, layers, metadata: { "maptoolkit:legend": manifest } }),
     queryRenderedFeatures: () => (options.withFeatures === false ? [] : features),
     project: ([x, y]: [number, number]) => ({ x, y }),
@@ -64,7 +68,7 @@ describe("LegendControl", () => {
     const groups = [...container.querySelectorAll(".maplibre-legend-control-group")].map((g) => (g as HTMLElement).dataset.group);
     expect(groups).toEqual(["place", "road", "nature", "poi"]);
     const keys = [...container.querySelectorAll(".maplibre-legend-control-entry")].map((e) => (e as HTMLElement).dataset.key);
-    expect(keys).toEqual(["place:town", "place:village", "road:major_dark", "road:minor", "road:hiking", "road:path", "nature:wood", "nature:farmland", "poi:fountain"]);
+    expect(keys).toEqual(["place:town", "place:village", "road:major_dark", "road:minor", "road:hiking", "road:path", "nature:wood", "nature:farmland", "poi:fountain", "poi:peak"]);
 
     // left column: the map label in the map font; right column: the type
     const town = container.querySelector('[data-key="place:town"]') as HTMLElement;
@@ -101,6 +105,24 @@ describe("LegendControl", () => {
     expect(symbol.classList.contains("maplibre-legend-control-symbol-single")).toBe(true); // icon only, no text
     expect(symbol.querySelector(".maplibre-legend-control-symbol-icon")).not.toBeNull();
     expect(fountain.querySelector(":scope > .maplibre-legend-control-label")?.textContent).toBe("Fountain");
+    vi.useRealTimers();
+  });
+
+  it("caps the list at 40 % of the map height and the panel at the map width", () => {
+    const container = new LegendControl().onAdd(createMockMap());
+    const list = container.querySelector(".maplibre-legend-control-list") as HTMLElement;
+    expect(list.style.maxHeight).toBe("120px"); // 0.4 × 300, header has no height in jsdom
+    expect(container.style.maxWidth).toBe("380px"); // map width − 20
+  });
+
+  it("aligns left-justified symbols at the column start, everything else on the centre axis", () => {
+    vi.useFakeTimers();
+    const container = new LegendControl({ language: "de", updateDelay: 0 }).onAdd(createMockMap());
+    vi.runAllTimers();
+    const town = container.querySelector('[data-key="place:town"] .maplibre-legend-control-visual') as HTMLElement;
+    expect(town.classList.contains("maplibre-legend-control-visual-start")).toBe(false);
+    const peak = container.querySelector('[data-key="poi:peak"] .maplibre-legend-control-visual') as HTMLElement;
+    expect(peak.classList.contains("maplibre-legend-control-visual-start")).toBe(true);
     vi.useRealTimers();
   });
 
