@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSymbolPreview, textPlacement } from "../src/swatch";
+import { createLineSwatch, createSymbolPreview, lineVariantFor, LINE_VARIANTS, textPlacement } from "../src/swatch";
 import type { TextStyle } from "../src/types";
 
 const cases: Array<[Partial<TextStyle> | undefined, ReturnType<typeof textPlacement>]> = [
@@ -31,5 +31,26 @@ describe("createSymbolPreview", () => {
     const textOnly = createSymbolPreview({ name: "Tulln", text: { fontStack: ["Rosario Bold"], size: 14 } });
     expect(textOnly.classList.contains("maplibre-legend-control-symbol-single")).toBe(true);
     expect(textOnly.children).toHaveLength(1);
+  });
+});
+
+describe("line variants", () => {
+  it("assigns a stable variant per key within range", () => {
+    expect(lineVariantFor("road:major_dark")).toBe(lineVariantFor("road:major_dark"));
+    for (const k of ["road:major_dark", "road:minor", "road:path", "water:waterway", "border:admin_country"]) {
+      const v = lineVariantFor(k);
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThan(LINE_VARIANTS);
+    }
+    const distinct = new Set(["road:major_dark", "road:minor", "road:path", "water:waterway", "border:admin_country", "road:rail"].map(lineVariantFor));
+    expect(distinct.size).toBeGreaterThan(1);
+  });
+
+  it("draws the chosen curve", () => {
+    const layer = { id: "l", type: "line", role: "main", order: 0, paint: { "line-color": "rgba(0,0,0,1)", "line-width": 2 }, layout: {} };
+    const a = createLineSwatch([layer], 0).querySelector("path")?.getAttribute("d");
+    const b = createLineSwatch([layer], 1).querySelector("path")?.getAttribute("d");
+    expect(a).not.toBe(b);
+    expect(createLineSwatch([layer], LINE_VARIANTS).querySelector("path")?.getAttribute("d")).toBe(a); // wraps around
   });
 });

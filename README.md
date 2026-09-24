@@ -72,8 +72,9 @@ evaluated paint and layout, and builds:
 - **class entries** — one per rendered main layer key (motorway, forest, country
   border …), with a swatch stacked from the layer and its casing/blur/texture
   layers using the evaluated colours, widths, gaps and dash patterns at the
-  current zoom. Lines are drawn as a curved SVG stroke stack, scaled together
-  when too wide; the copies come from one and the same feature, ground level
+  current zoom. Lines are drawn as a curved SVG stroke stack — one of a few
+  bends, chosen per entry so rows differ but stay put across updates — scaled
+  together when too wide; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the
   hiking band together with the path it runs on. SDF sprite icons are

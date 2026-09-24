@@ -17,9 +17,9 @@
   --legend-control-color-fg-strong: #282932;
   --legend-control-color-fg-muted: #656776;
   --legend-control-color-primary: #4054a5;
-  --legend-control-width: 260px;
+  --legend-control-width: 280px;
   --legend-control-max-height: 60vh;
-  --legend-control-swatch-width: 36px;
+  --legend-control-swatch-width: 56px;
   --legend-control-swatch-height: 18px;
 
   box-sizing: border-box;
@@ -118,6 +118,7 @@
 .maplibre-legend-control .maplibre-legend-control-label {
   flex: 1 1 auto;
   min-width: 0;
+  text-align: right;
   color: var(--legend-control-color-fg-muted);
 }
 

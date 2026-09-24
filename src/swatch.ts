@@ -11,7 +11,7 @@ export type StyleImageLike = {
 export type GetImage = (id: string) => StyleImageLike | undefined | null;
 
 const CLASS = "maplibre-legend-control";
-const SWATCH_W = 36;
+const SWATCH_W = 56;
 const SWATCH_H = 18;
 const MAX_ICON = 24;
 
@@ -87,8 +87,18 @@ function imageToCanvas(image: StyleImageLike, options: { color?: string; haloCol
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-/** A gentle S-curve through the swatch box, so a road reads as a road. */
-const LINE_PATH = "M 2 12.5 C 12 0.5, 24 17.5, 34 5.5";
+/**
+ * Gentle curves through the 56×18 swatch box, so a road reads as a road. One
+ * of them is picked per entry (see {@link lineVariantFor}) — different entries
+ * get different bends, an entry keeps its bend across updates.
+ */
+const LINE_PATHS = [
+  "M 3 12.5 C 16 1.5, 30 17.5, 53 5.5",
+  "M 3 5.5 C 18 16.5, 34 1.5, 53 12.5",
+  "M 3 10 C 12 2, 22 2, 30 9 S 46 16, 53 7",
+  "M 3 14 C 18 14, 30 3, 53 4",
+  "M 3 4 C 12 16, 36 16, 53 12",
+];
 /** Strokes wider than this (incl. casing gaps) are scaled down together, keeping their ratios. */
 const MAX_STROKE = SWATCH_H - 4;
 
@@ -122,10 +132,11 @@ function strokeOf(layer: SwatchLayer): Stroke | undefined {
  * scaled together when the widest would not fit, so casing and main keep their
  * ratio at every zoom.
  */
-export function createLineSwatch(layers: SwatchLayer[]): HTMLElement {
+export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElement {
   const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-line`);
   const strokes = layers.map(strokeOf).filter((s): s is Stroke => Boolean(s));
   if (!strokes.length) return box;
+  const d = LINE_PATHS[Math.abs(Math.trunc(variant)) % LINE_PATHS.length];
 
   const widest = Math.max(...strokes.map((s) => s.width));
   const scale = widest > MAX_STROKE ? MAX_STROKE / widest : 1;
@@ -138,7 +149,7 @@ export function createLineSwatch(layers: SwatchLayer[]): HTMLElement {
   for (const stroke of strokes) {
     const path = document.createElementNS(SVG_NS, "path");
     path.setAttribute("class", `${CLASS}-stroke ${CLASS}-stroke-${stroke.role}`);
-    path.setAttribute("d", LINE_PATH);
+    path.setAttribute("d", d);
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", stroke.color);
     path.setAttribute("stroke-width", String(Math.max(0.75, stroke.width * scale)));
@@ -208,13 +219,26 @@ export function createIconSwatch(layer: SwatchLayer, getImage?: GetImage): HTMLE
   return box;
 }
 
+/** Number of line curve variants available to {@link createLineSwatch}. */
+export const LINE_VARIANTS = LINE_PATHS.length;
+
+/**
+ * Stable pseudo-random curve variant for an entry key, so a legend row keeps
+ * its bend across updates while neighbouring rows differ.
+ */
+export function lineVariantFor(key: string): number {
+  let h = 2166136261; // FNV-1a
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+  return (h >>> 0) % LINE_PATHS.length;
+}
+
 /** Pick the swatch shape from the entry's main layer type and hand the stack to the matching builder. */
-export function createSwatch(layers: SwatchLayer[], getImage?: GetImage): HTMLElement {
+export function createSwatch(layers: SwatchLayer[], getImage?: GetImage, variant = 0): HTMLElement {
   const main = layers.find((l) => l.role === "main") ?? layers[0];
   if (!main) return el("span", `${CLASS}-swatch ${CLASS}-swatch-empty`);
   switch (main.type) {
     case "line":
-      return createLineSwatch(layers);
+      return createLineSwatch(layers, variant);
     case "fill":
     case "fill-extrusion":
       return createFillSwatch(
