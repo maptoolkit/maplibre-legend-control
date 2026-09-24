@@ -128,6 +128,8 @@ describe("helpers", () => {
     expect(valueToString(3)).toBe("3");
     expect(valueToString({ toString: () => "rgba(1,2,3,1)" })).toBe("rgba(1,2,3,1)");
     expect(valueToString({ name: "sdf:peak", available: true })).toBe("sdf:peak");
+    expect(valueToString({ from: { name: "nature:wood" }, to: { name: "nature:wood" } })).toBe("nature:wood"); // cross-faded fill-pattern
+    expect(valueToString({ to: "x" })).toBe("x");
     expect(valueToString({ plain: true })).toBeUndefined();
     expect(valueToString(undefined)).toBeUndefined();
   });

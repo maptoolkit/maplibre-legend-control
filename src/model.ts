@@ -42,15 +42,21 @@ const UNORDERED = 1_000_000;
 /** Supporting roles that carry text — they never contribute strokes to a swatch. */
 const TEXT_ROLES = new Set(["label", "shield"]);
 
-/** Turn an evaluated style value (string, number, Color, Formatted, ResolvedImage …) into a string. */
+/**
+ * Turn an evaluated style value (string, number, Color, Formatted, ResolvedImage …)
+ * into a string. Cross-faded properties (`fill-pattern`, `line-pattern`,
+ * `fill-extrusion-pattern`) arrive as `{ from, to }` for the zoom transition;
+ * `to` is the current value.
+ */
 export function valueToString(value: unknown): string | undefined {
   if (value === null || value === undefined) return undefined;
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (typeof value === "object") {
-    const named = value as { name?: unknown; toString?: () => string };
-    if (typeof named.name === "string") return named.name; // ResolvedImage
-    if (typeof named.toString === "function" && named.toString !== Object.prototype.toString) return named.toString(); // Color, Formatted
+    const obj = value as { name?: unknown; to?: unknown; from?: unknown; toString?: () => string };
+    if (obj.to !== undefined || obj.from !== undefined) return valueToString(obj.to ?? obj.from); // CrossFaded
+    if (typeof obj.name === "string") return obj.name; // ResolvedImage
+    if (typeof obj.toString === "function" && obj.toString !== Object.prototype.toString) return obj.toString(); // Color, Formatted
   }
   return undefined;
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { vi } from "vitest";
 import { createFillSwatch, createLineSwatch, createSymbolPreview, lineVariantFor, LINE_VARIANTS, textPlacement } from "../src/swatch";
 import type { TextStyle } from "../src/types";
 
@@ -116,5 +117,15 @@ describe("fill swatch borders", () => {
   it("has no border svg without line layers", () => {
     const fill = { id: "f", type: "fill", role: "main", order: 0, paint: { "fill-color": "#abc" }, layout: {} };
     expect(createFillSwatch(fill).querySelector("svg")).toBeNull();
+  });
+});
+
+describe("fill patterns", () => {
+  it("asks the map for the pattern image named by a cross-faded fill-pattern", () => {
+    const fill = { id: "nature_natural", type: "fill", role: "main", order: 0, paint: { "fill-color": "#9c9" }, layout: {} };
+    const texture = { id: "nature_natural_texture", type: "fill", role: "texture", order: 1, paint: { "fill-pattern": { from: { name: "nature:wood" }, to: { name: "nature:wood" } } }, layout: {} };
+    const getImage = vi.fn(() => undefined);
+    createFillSwatch(fill, getImage, [texture]);
+    expect(getImage).toHaveBeenCalledWith("nature:wood");
   });
 });
