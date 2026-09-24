@@ -129,3 +129,14 @@ describe("fill patterns", () => {
     expect(getImage).toHaveBeenCalledWith("nature:wood");
   });
 });
+
+describe("fill swatch shadows", () => {
+  it("renders a blurred shadow stroke as a soft halo instead of a frame", () => {
+    const fill = { id: "building_footprint", type: "fill", role: "main", order: 1, paint: { "fill-color": "rgba(230,230,230,1)", "fill-outline-color": "rgba(200,200,200,1)" }, layout: {} };
+    const shadow = { id: "building_shadow", type: "line", role: "shadow", order: 0, paint: { "line-color": "rgba(60,50,40,1)", "line-width": 12, "line-blur": 13, "line-opacity": 0.3 }, layout: { "line-cap": "butt" } };
+    const box = createFillSwatch(fill, undefined, [shadow]);
+    expect(box.querySelector("rect")).toBeNull(); // no crisp border
+    expect(box.style.boxShadow).toContain("inset 0 0 0 1px"); // the outline hairline stays
+    expect(box.style.boxShadow).toContain("0 0 8px 4px rgba(60,50,40,0.3)"); // half width as spread, blur capped, faded
+  });
+});

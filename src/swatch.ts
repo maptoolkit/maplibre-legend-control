@@ -38,6 +38,13 @@ function parseColor(color: string): [number, number, number, number] | undefined
   return [r, g, b, a / 255];
 }
 
+/** The colour with its alpha multiplied by `opacity`; the input is returned unchanged when it cannot be parsed. */
+function withAlpha(color: string, opacity: number): string {
+  if (opacity >= 1) return color;
+  const rgba = parseColor(color);
+  return rgba ? `rgba(${rgba[0]},${rgba[1]},${rgba[2]},${Math.round(rgba[3] * opacity * 1000) / 1000})` : color;
+}
+
 /** Draw a style image (plain or SDF, recolored) onto a canvas; `undefined` when the environment has no 2D canvas. */
 function imageToCanvas(image: StyleImageLike, options: { color?: string; haloColor?: string; haloWidth?: number } = {}): HTMLCanvasElement | undefined {
   const { width, height, data } = image.data;
@@ -198,7 +205,8 @@ export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, suppor
   const outline = valueToString(layer.paint["fill-outline-color"]);
   if (color) box.style.backgroundColor = color;
   box.style.opacity = String(opacity);
-  if (outline) box.style.boxShadow = `inset 0 0 0 1px ${outline}`;
+  const shadows: string[] = [];
+  if (outline) shadows.push(`inset 0 0 0 1px ${outline}`);
 
   for (const tex of [layer, ...supporting.filter((l) => l.type === "fill")]) {
     const pattern = valueToString(tex.paint["fill-pattern"]);
@@ -214,7 +222,19 @@ export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, suppor
     }
   }
 
-  const borders = supporting.map(strokeOf).filter((st): st is Stroke => Boolean(st));
+  const strokes = supporting.map(strokeOf).filter((st): st is Stroke => Boolean(st));
+  // Shadows and other blurred strokes are soft halos along the edge (the map
+  // draws them below the fill, so only the outer half shows): a box-shadow of
+  // half the width, blurred and faded like the layer — not a crisp frame.
+  const halos = strokes.filter((st) => st.role === "shadow" || st.blur > 0);
+  for (const st of halos) {
+    const spread = Math.min(4, st.width / 2);
+    const blur = Math.min(8, Math.max(st.blur, spread));
+    shadows.push(`0 0 ${blur}px ${spread}px ${withAlpha(st.color, st.opacity)}`);
+  }
+  if (shadows.length) box.style.boxShadow = shadows.join(", ");
+
+  const borders = strokes.filter((st) => !halos.includes(st));
   if (borders.length) {
     const svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("class", `${CLASS}-fill-borders`);

@@ -78,8 +78,10 @@ evaluated paint and layout, and builds:
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the
   hiking band together with the path it runs on. Fills carry their sprite
-  pattern and the line layers of their stack as a border (an intermittent lake
-  keeps its dashed shoreline). SDF sprite icons are recoloured with their
+  pattern and the crisp line layers of their stack as a border (an intermittent
+  lake keeps its dashed shoreline), while shadow and other blurred strokes
+  become a soft halo along the edge, as faint as on the map (a building's
+  shadow does not frame it). SDF sprite icons are recoloured with their
   `icon-color`;
 - **instance entries** — for standalone label layers (places, waters, POIs) one
   entry per type, showing the most prominent feature among those whose label
@@ -108,15 +110,15 @@ without a tag are ignored. The contract is documented in
 
 ## Options
 
-| Option        | Type       | Default                                   | Description                                                                                        |
-| ------------- | ---------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `collapsed`   | `boolean`  | `false`                                   | Start collapsed to the title; updates are deferred until the panel is opened.                      |
-| `language`    | `string`   | `<html lang>`, else browser language      | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key. |
-| `edgeBuffer`  | `number`   | `0.05`                                    | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label. |
-| `groups`      | `string[]` | all                                       | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`). |
-| `updateDelay` | `number`   | `100`                                     | Debounce in ms between the map's `idle` event and the update.                                      |
-| `maxHeightRatio` | `number` | `0.6`                                    | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width. |
-| `background`  | `"auto" \| string` | `"auto"`                            | Panel background: the style's `background` layer colour at the current zoom (fallback `hsl(90, 23%, 95%)`), or a fixed CSS colour. Text switches to light on dark backgrounds. |
+| Option           | Type               | Default                              | Description                                                                                                                                                                    |
+| ---------------- | ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `collapsed`      | `boolean`          | `false`                              | Start collapsed to the title; updates are deferred until the panel is opened.                                                                                                  |
+| `language`       | `string`           | `<html lang>`, else browser language | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key.                                                                             |
+| `edgeBuffer`     | `number`           | `0.05`                               | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label.                                           |
+| `groups`         | `string[]`         | all                                  | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`).                                                               |
+| `updateDelay`    | `number`           | `100`                                | Debounce in ms between the map's `idle` event and the update.                                                                                                                  |
+| `maxHeightRatio` | `number`           | `0.6`                                | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width.               |
+| `background`     | `"auto" \| string` | `"auto"`                             | Panel background: the style's `background` layer colour at the current zoom (fallback `hsl(90, 23%, 95%)`), or a fixed CSS colour. Text switches to light on dark backgrounds. |
 
 ## Methods
 
