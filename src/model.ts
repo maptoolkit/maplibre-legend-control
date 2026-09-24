@@ -149,6 +149,9 @@ function textStyleOf(feature: RenderedFeature): TextStyle {
   const paint = feature.layer.paint ?? {};
   const fontStack = Array.isArray(layout["text-font"]) ? (layout["text-font"] as unknown[]).map(String) : [];
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+  const offset = valueToNumbers(layout["text-offset"]);
+  // text-variable-anchor lists alternatives the collision pass chooses from; the first one is the preferred placement
+  const variable = Array.isArray(layout["text-variable-anchor"]) ? valueToString((layout["text-variable-anchor"] as unknown[])[0]) : undefined;
   return {
     fontStack,
     size: num(layout["text-size"]),
@@ -157,12 +160,17 @@ function textStyleOf(feature: RenderedFeature): TextStyle {
     haloWidth: num(paint["text-halo-width"]),
     transform: valueToString(layout["text-transform"]),
     letterSpacing: num(layout["text-letter-spacing"]),
+    anchor: valueToString(layout["text-anchor"]) ?? variable,
+    offset: offset && offset.length >= 2 ? [offset[0], offset[1]] : undefined,
+    justify: valueToString(layout["text-justify"]),
+    maxWidth: num(layout["text-max-width"]),
+    lineHeight: num(layout["text-line-height"]),
   };
 }
 
 type InstanceCandidate = {
   feature: RenderedFeature;
-  name: string;
+  name?: string;
   rank: number;
   inside: boolean;
   distance: number;
@@ -205,8 +213,8 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       if (!value) continue;
       const entryKey = `${tag.group}:${value}`;
       if (isHiddenKey(entryKey)) continue;
-      const name = valueToString(feature.layer.layout?.["text-field"])?.trim();
-      if (!name) continue;
+      const name = valueToString(feature.layer.layout?.["text-field"])?.trim() || undefined;
+      if (!name && !feature.layer.layout?.["icon-image"]) continue; // nothing to show
       const rankRaw = tag.rankProperty ? Number(feature.properties?.[tag.rankProperty]) : NaN;
       const rank = Number.isFinite(rankRaw) ? rankRaw : Number.POSITIVE_INFINITY;
       const anchor = geometryAnchor(feature.geometry);
@@ -310,9 +318,9 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     }
   }
 
-  // Pass 3 — one instance entry per key: inside the margin first, then lowest rank, then closest to the centre.
+  // Pass 3 — one instance entry per key: inside the margin first, then lowest rank, named before unnamed, then closest to the centre.
   for (const [entryKey, list] of candidates) {
-    list.sort((a, b) => Number(b.inside) - Number(a.inside) || a.rank - b.rank || a.distance - b.distance);
+    list.sort((a, b) => Number(b.inside) - Number(a.inside) || a.rank - b.rank || Number(Boolean(b.name)) - Number(Boolean(a.name)) || a.distance - b.distance);
     const best = list[0];
     const { tag } = instanceTags.get(entryKey)!;
     const layout = best.feature.layer.layout ?? {};

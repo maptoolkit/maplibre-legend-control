@@ -130,10 +130,31 @@ export const features: RenderedFeature[] = [
       type: "symbol",
       metadata: { [KEY]: { role: "label", group: "poi", instance: true, keyProperty: "type", rankProperty: "rank_new" } },
       paint: {},
-      layout: { "text-field": asToString("Bankerl"), "text-font": ["Rosario Semibold"], "icon-image": { name: "sdf:bench" } },
+      layout: {
+        "text-field": asToString("Bankerl"),
+        "text-font": ["Rosario Semibold"],
+        "text-size": 12,
+        "text-anchor": "top",
+        "text-justify": "center",
+        "text-offset": [0, 0.8],
+        "icon-image": { name: "sdf:bench" },
+        "icon-size": 1,
+      },
     },
     properties: { type: "bench", rank_new: 20 },
     geometry: { type: "Point", coordinates: [200, 100] },
+  },
+  // an unnamed POI: icon only, still a legend entry for its type
+  {
+    layer: {
+      id: "poi_generic_label_rank_3",
+      type: "symbol",
+      metadata: { [KEY]: { role: "label", group: "poi", instance: true, keyProperty: "type", rankProperty: "rank_new" } },
+      paint: {},
+      layout: { "text-field": asToString(""), "text-font": ["Rosario Semibold"], "text-anchor": "top", "icon-image": { name: "sdf:fountain" } },
+    },
+    properties: { type: "fountain", rank_new: 18 },
+    geometry: { type: "Point", coordinates: [210, 110] },
   },
   // untagged custom layer → ignored
   { layer: { id: "custom-untagged", type: "fill", paint: {}, layout: {} }, properties: { type: "x" }, geometry: { type: "Point", coordinates: [1, 1] } },

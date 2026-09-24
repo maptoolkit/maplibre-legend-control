@@ -72,7 +72,7 @@ export type SwatchLayer = {
   layout: Record<string, unknown>;
 };
 
-/** Evaluated text appearance of an instance label, for rendering the name in the map font. */
+/** Evaluated text appearance and placement of an instance label, for rendering the name like the map does. */
 export type TextStyle = {
   fontStack: string[];
   size?: number;
@@ -81,6 +81,16 @@ export type TextStyle = {
   haloWidth?: number;
   transform?: string;
   letterSpacing?: number;
+  /** `text-anchor` — which side of the text box sits at the symbol's anchor point. */
+  anchor?: string;
+  /** `text-offset` in ems, [x, y]. */
+  offset?: [number, number];
+  /** `text-justify` → text alignment. */
+  justify?: string;
+  /** `text-max-width` in ems (line wrapping). */
+  maxWidth?: number;
+  /** `text-line-height` as a factor. */
+  lineHeight?: number;
 };
 
 export type LegendEntry = {
@@ -90,10 +100,10 @@ export type LegendEntry = {
   kind: "class" | "instance";
   /** Resolved display label (manifest label in the chosen language, or the humanized key). */
   label: string;
-  /** Instance entries: the rendered name of the chosen feature. */
+  /** Instance entries: the rendered name of the chosen feature (may be absent for icon-only POIs). */
   name?: string;
   text?: TextStyle;
-  /** Instance entries with an icon (POIs). */
+  /** Instance entries with an icon (POIs), drawn together with the name like on the map. */
   icon?: SwatchLayer;
   /** Class entries: main + supporting layers, bottom to top. */
   swatch: SwatchLayer[];

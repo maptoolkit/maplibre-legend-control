@@ -11,7 +11,7 @@ describe("buildLegendModel", () => {
   const entry = (key: string) => model.groups.flatMap((g) => g.entries).find((e) => e.key === key);
 
   it("orders groups by the manifest and labels them in the requested language", () => {
-    expect(model.groups.map((g) => g.id)).toEqual(["place", "road", "nature"]);
+    expect(model.groups.map((g) => g.id)).toEqual(["place", "road", "nature", "poi"]);
     expect(group("road")?.label).toBe("Straßen und Verkehr");
     expect(build({ language: "en" }).groups.find((g) => g.id === "road")?.label).toBe("Roads and transport");
   });
@@ -59,7 +59,7 @@ describe("buildLegendModel", () => {
   it("picks one named feature per type: inside the edge margin first, then lowest rank", () => {
     const town = entry("place:town");
     expect(town).toMatchObject({ kind: "instance", name: "Tulln an der Donau", label: "Stadt" });
-    expect(town?.text).toMatchObject({ fontStack: ["Rosario Bold"], size: 14, color: "rgba(40,40,40,1)", haloWidth: 1 });
+    expect(town?.text).toMatchObject({ fontStack: ["Rosario Bold"], size: 14, color: "rgba(40,40,40,1)", haloWidth: 1, anchor: undefined });
     expect(entry("place:village")).toMatchObject({ name: "Langenlebarn" });
     expect(group("place")?.entries.map((e) => e.key)).toEqual(["place:town", "place:village"]);
   });
@@ -72,15 +72,19 @@ describe("buildLegendModel", () => {
 
   it("drops entries hidden by the manifest and layers without a tag", () => {
     expect(entry("poi:bench")).toBeUndefined();
-    expect(model.groups.some((g) => g.id === "poi")).toBe(false);
+    expect(model.groups.find((g) => g.id === "poi")?.entries.map((e) => e.key)).toEqual(["poi:fountain"]); // the bench is hidden
     expect(model.groups.flatMap((g) => g.entries).some((e) => e.swatch.some((l) => l.id === "custom-untagged"))).toBe(false);
   });
 
-  it("carries the icon of instance labels", () => {
+  it("carries icon and placement of instance labels, and accepts icon-only symbols", () => {
     const m = build({ manifest: { ...manifest, entries: { ...manifest.entries, "poi:bench": {} } } });
     const bench = m.groups.flatMap((g) => g.entries).find((e) => e.key === "poi:bench");
     expect(bench?.icon?.layout["icon-image"]).toEqual({ name: "sdf:bench" });
     expect(bench?.label).toBe("Bench");
+    expect(bench?.text).toMatchObject({ anchor: "top", offset: [0, 0.8], justify: "center", size: 12 });
+    const fountain = m.groups.flatMap((g) => g.entries).find((e) => e.key === "poi:fountain");
+    expect(fountain).toMatchObject({ kind: "instance", name: undefined, label: "Fountain" });
+    expect(fountain?.icon?.layout["icon-image"]).toEqual({ name: "sdf:fountain" });
   });
 
   it("works without a manifest", () => {

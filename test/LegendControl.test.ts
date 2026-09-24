@@ -62,16 +62,19 @@ describe("LegendControl", () => {
     vi.runAllTimers();
 
     const groups = [...container.querySelectorAll(".maplibre-legend-control-group")].map((g) => (g as HTMLElement).dataset.group);
-    expect(groups).toEqual(["place", "road", "nature"]);
+    expect(groups).toEqual(["place", "road", "nature", "poi"]);
     const keys = [...container.querySelectorAll(".maplibre-legend-control-entry")].map((e) => (e as HTMLElement).dataset.key);
-    expect(keys).toEqual(["place:town", "place:village", "road:major_dark", "road:minor", "road:hiking", "road:path", "nature:wood", "nature:farmland"]);
+    expect(keys).toEqual(["place:town", "place:village", "road:major_dark", "road:minor", "road:hiking", "road:path", "nature:wood", "nature:farmland", "poi:fountain"]);
 
+    // left column: the map label in the map font; right column: the type
     const town = container.querySelector('[data-key="place:town"]') as HTMLElement;
-    const name = town.querySelector(".maplibre-legend-control-name") as HTMLElement;
+    const name = town.querySelector(".maplibre-legend-control-visual .maplibre-legend-control-symbol-text") as HTMLElement;
     expect(name.textContent).toBe("Tulln an der Donau");
     expect(name.style.fontFamily).toContain("Rosario");
     expect(name.style.fontWeight).toBe("700");
-    expect(town.querySelector(".maplibre-legend-control-type")?.textContent).toBe("Stadt");
+    expect(name.style.fontSize).toBe("14px");
+    expect(town.querySelector(".maplibre-legend-control-symbol-icon")).toBeNull(); // no dot, no icon: the label is the symbol
+    expect(town.querySelector(":scope > .maplibre-legend-control-label")?.textContent).toBe("Stadt");
 
     const motorway = container.querySelector('[data-key="road:major_dark"]') as HTMLElement;
     expect(motorway.querySelector(".maplibre-legend-control-label")?.textContent).toBe("Hauptstraße");
@@ -83,7 +86,21 @@ describe("LegendControl", () => {
     const minor = container.querySelector('[data-key="road:minor"] path.maplibre-legend-control-stroke-main') as SVGPathElement;
     expect(minor.getAttribute("stroke-dasharray")).toBe("10 15"); // [2, 3] × width 5
 
-    expect(control.getModel()?.groups).toHaveLength(3);
+    expect(control.getModel()?.groups).toHaveLength(4);
+    vi.useRealTimers();
+  });
+
+  it("draws POI symbols as icon plus label like the map: text below an icon with text-anchor top", () => {
+    vi.useFakeTimers();
+    const map = createMockMap();
+    const container = new LegendControl({ language: "de", updateDelay: 0 }).onAdd(map);
+    vi.runAllTimers();
+    const fountain = container.querySelector('[data-key="poi:fountain"]') as HTMLElement;
+    expect(fountain).not.toBeNull();
+    const symbol = fountain.querySelector(".maplibre-legend-control-symbol") as HTMLElement;
+    expect(symbol.classList.contains("maplibre-legend-control-symbol-single")).toBe(true); // icon only, no text
+    expect(symbol.querySelector(".maplibre-legend-control-symbol-icon")).not.toBeNull();
+    expect(fountain.querySelector(":scope > .maplibre-legend-control-label")?.textContent).toBe("Fountain");
     vi.useRealTimers();
   });
 

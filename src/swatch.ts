@@ -229,20 +229,78 @@ export function createSwatch(layers: SwatchLayer[], getImage?: GetImage): HTMLEl
   }
 }
 
-/** Apply an evaluated text appearance (map font, colour, halo, transform) to a DOM element. */
-export function applyTextStyle(target: HTMLElement, text: TextStyle, maxSize = 16): void {
+/** Apply an evaluated text appearance (map font, size, colour, halo, transform, wrapping) to a DOM element. */
+export function applyTextStyle(target: HTMLElement, text: TextStyle, maxSize = 22): void {
   const css = fontStackToCss(text.fontStack);
   if (css) {
     target.style.fontFamily = css.fontFamily;
     target.style.fontWeight = css.fontWeight;
     target.style.fontStyle = css.fontStyle;
   }
-  if (text.size) target.style.fontSize = `${clamp(text.size, 10, maxSize)}px`;
+  const size = clamp(text.size ?? 14, 8, maxSize);
+  target.style.fontSize = `${size}px`;
+  target.style.lineHeight = String(text.lineHeight ?? 1.2);
+  target.style.maxWidth = `${text.maxWidth ?? 10}em`;
   if (text.color) target.style.color = text.color;
   if (text.transform && text.transform !== "none") target.style.textTransform = text.transform;
   if (text.letterSpacing) target.style.letterSpacing = `${text.letterSpacing}em`;
+  if (text.justify) target.style.textAlign = text.justify === "auto" ? "center" : text.justify;
   if (text.haloColor && text.haloWidth) {
-    const w = Math.min(text.haloWidth, 2);
-    target.style.textShadow = `0 0 ${w}px ${text.haloColor}, 0 0 ${w}px ${text.haloColor}`;
+    // a halo is a stroke around the glyphs; several blurred shadows approximate it
+    const w = Math.min(text.haloWidth, 2.5);
+    const shadow = `0 0 ${w}px ${text.haloColor}`;
+    target.style.textShadow = [shadow, shadow, shadow, shadow].join(", ");
   }
+}
+
+/**
+ * Where the text sits relative to the icon, from `text-anchor` and `text-offset`
+ * the way MapLibre places it: the anchor names the side of the text box that
+ * touches the symbol's anchor point, so `top` puts the text below the icon.
+ */
+export function textPlacement(text: TextStyle | undefined): "below" | "above" | "right" | "left" | "overlay" {
+  const anchor = text?.anchor ?? "center";
+  const [ox, oy] = text?.offset ?? [0, 0];
+  if (anchor.startsWith("top")) return "below";
+  if (anchor.startsWith("bottom")) return "above";
+  if (anchor === "left") return "right";
+  if (anchor === "right") return "left";
+  if (oy > 0.3) return "below";
+  if (oy < -0.3) return "above";
+  if (ox > 0.3) return "right";
+  if (ox < -0.3) return "left";
+  return "overlay";
+}
+
+/**
+ * The map symbol of an instance entry as it appears on the map: the icon (if
+ * any) and the name in the map font, arranged by anchor and offset. Used for
+ * the left column, where the class entries show their swatch.
+ */
+export function createSymbolPreview(entry: { name?: string; text?: TextStyle; icon?: SwatchLayer }, getImage?: GetImage): HTMLElement {
+  const box = el("span", `${CLASS}-symbol`);
+  const placement = textPlacement(entry.text);
+  box.classList.add(`${CLASS}-symbol-${entry.icon && entry.name ? placement : "single"}`);
+
+  let iconEl: HTMLElement | undefined;
+  if (entry.icon) {
+    iconEl = createIconSwatch(entry.icon, getImage);
+    iconEl.classList.add(`${CLASS}-symbol-icon`);
+    box.appendChild(iconEl);
+  }
+  if (entry.name) {
+    const textEl = el("span", `${CLASS}-symbol-text`);
+    textEl.textContent = entry.name;
+    if (entry.text) applyTextStyle(textEl, entry.text);
+    if (iconEl && placement !== "overlay") {
+      // offset is measured from the icon centre to the text box edge, in ems
+      const [ox, oy] = entry.text?.offset ?? [0, 0];
+      const em = clamp(entry.text?.size ?? 14, 8, 22);
+      const along = placement === "below" || placement === "above" ? Math.abs(oy) : Math.abs(ox);
+      const gap = Math.max(0, Math.min(8, along * em - MAX_ICON / 2));
+      box.style.gap = `${gap}px`;
+    }
+    box.appendChild(textEl);
+  }
+  return box;
 }

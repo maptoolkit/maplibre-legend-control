@@ -99,26 +99,65 @@
   padding: 0;
   list-style: none;
 }
+/* entry row: left the map's rendering (swatch or symbol), right the explanation */
 .maplibre-legend-control .maplibre-legend-control-entry {
   display: flex;
   align-items: center;
-  gap: var(--legend-control-space-2);
+  gap: var(--legend-control-space-3);
   min-height: 24px;
-  padding: 2px 0;
+  padding: 3px 0;
 }
-.maplibre-legend-control .maplibre-legend-control-text {
-  display: flex;
-  flex-direction: column;
+.maplibre-legend-control .maplibre-legend-control-visual {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--legend-control-swatch-width);
+  max-width: 58%;
+}
+.maplibre-legend-control .maplibre-legend-control-label {
+  flex: 1 1 auto;
   min-width: 0;
-}
-.maplibre-legend-control .maplibre-legend-control-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.maplibre-legend-control .maplibre-legend-control-type {
-  font-size: 11px;
   color: var(--legend-control-color-fg-muted);
+}
+
+/* symbol preview: icon + name arranged like on the map */
+.maplibre-legend-control .maplibre-legend-control-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-below {
+  flex-direction: column;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-above {
+  flex-direction: column-reverse;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-right {
+  flex-direction: row;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-left {
+  flex-direction: row-reverse;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-overlay {
+  display: inline-grid;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-overlay > * {
+  grid-area: 1 / 1;
+  justify-self: center;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-icon {
+  width: auto;
+  height: auto;
+  overflow: visible;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-text {
+  display: block;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  text-align: center;
+  color: var(--legend-control-color-fg-strong);
 }
 
 /* swatches */

@@ -79,8 +79,15 @@ evaluated paint and layout, and builds:
   hiking band together with the path it runs on. SDF sprite icons are
   recoloured with their `icon-color`;
 - **instance entries** — for standalone label layers (places, waters, POIs) one
-  entry per type, showing the most prominent named feature (lowest rank, edge
-  features last, then the one closest to the centre) in the map's own font.
+  entry per type, showing the most prominent feature (lowest rank, edge
+  features last, then the one closest to the centre) as the map draws it: the
+  name in the map's own font, size, colour and halo, and for POIs the icon with
+  the name placed by `text-anchor`/`text-offset` — text below the icon, beside
+  it, or over it.
+
+Every row follows one rule: **left what the map shows, right the explanation** —
+a stroke stack or fill for a class entry, the symbol itself for an instance
+entry; the manifest label (or the humanized key) on the right.
 
 Custom layers take part when they carry the same tag; layers without a tag are
 ignored. The contract is documented in

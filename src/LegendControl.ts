@@ -1,6 +1,6 @@
 import type { Map, IControl, ControlPosition } from "maplibre-gl";
 import { buildLegendModel } from "./model";
-import { applyTextStyle, createIconSwatch, createSwatch, type GetImage } from "./swatch";
+import { createSwatch, createSymbolPreview, type GetImage } from "./swatch";
 import { LEGEND_METADATA_KEY, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
 /**
@@ -254,37 +254,20 @@ export class LegendControl implements IControl {
         li.classList.add(`${CLASS}-entry`, `${CLASS}-entry-${entry.kind}`);
         li.dataset.key = entry.key;
 
-        li.appendChild(entry.kind === "instance" ? (entry.icon ? createIconSwatch(entry.icon, getImage) : blankSwatch()) : createSwatch(entry.swatch, getImage));
+        // left: what the map shows (swatch of the layer stack, or the symbol with its label); right: the explanation
+        const visual = document.createElement("span");
+        visual.classList.add(`${CLASS}-visual`);
+        visual.appendChild(entry.kind === "instance" ? createSymbolPreview(entry, getImage) : createSwatch(entry.swatch, getImage));
+        li.appendChild(visual);
 
-        const text = document.createElement("span");
-        text.classList.add(`${CLASS}-text`);
-        if (entry.kind === "instance") {
-          const name = document.createElement("span");
-          name.classList.add(`${CLASS}-name`);
-          name.textContent = entry.name ?? "";
-          if (entry.text) applyTextStyle(name, entry.text);
-          text.appendChild(name);
-          const type = document.createElement("span");
-          type.classList.add(`${CLASS}-type`);
-          type.textContent = entry.label;
-          text.appendChild(type);
-        } else {
-          const label = document.createElement("span");
-          label.classList.add(`${CLASS}-label`);
-          label.textContent = entry.label;
-          text.appendChild(label);
-        }
-        li.appendChild(text);
+        const label = document.createElement("span");
+        label.classList.add(`${CLASS}-label`);
+        label.textContent = entry.label;
+        li.appendChild(label);
         ul.appendChild(li);
       }
       section.appendChild(ul);
       list.appendChild(section);
     }
   }
-}
-
-function blankSwatch(): HTMLElement {
-  const s = document.createElement("span");
-  s.classList.add(`${CLASS}-swatch`, `${CLASS}-swatch-empty`);
-  return s;
 }
