@@ -23,7 +23,10 @@ export const manifest: LegendManifest = {
 export const layerOrder = new Map<string, number>([
   ["nature_natural", 1],
   ["nature_natural_texture", 2],
+  ["road_hiking", 2.5],
   ["road_major_blur", 3],
+  ["road_path_casing", 3.2],
+  ["road_path", 3.4],
   ["road_major_casing", 4],
   ["road_minor", 5],
   ["road_major_dark", 6],
@@ -32,6 +35,7 @@ export const layerOrder = new Map<string, number>([
   ["road_major_label", 7],
   ["poi_generic_label_rank_3", 8],
   ["place_point_label_rank_3", 9],
+  ["road_hiking_label", 9.5],
   ["custom-untagged", 10],
 ]);
 
@@ -91,8 +95,13 @@ export const features: RenderedFeature[] = [
     properties: { type: "motorway", name: "A22" },
     geometry: { type: "LineString", coordinates: [[10, 10], [50, 10]] },
   },
-  // a minor road, casing attaches to it too; dashed like MapLibre reports it (NumberArray-shaped)
-  road("road_minor", "main", { key: "minor" }, "service", {}, [[100, 100], [150, 100]], { "line-dasharray": { values: [2, 3] } }),
+  // a minor road, casing attaches to it too; dashed like MapLibre reports it (cross-faded { from, to })
+  road("road_minor", "main", { key: "minor" }, "service", {}, [[100, 100], [150, 100]], { "line-dasharray": { from: [2, 3], to: [2, 3] } }),
+  // a hiking route: a wide band drawn BELOW the path it runs on (same feature, three copies)
+  road("road_hiking", "main", { key: "hiking", overlay: true }, "path", { walking_network: "rwn" }, [[200, 200], [240, 200]], { "line-width": 9, "line-opacity": 0.4, "line-color": asToString("rgba(220,60,60,1)") }),
+  road("road_path_casing", "casing", { attachesTo: ["road_path"] }, "path", { walking_network: "rwn" }, [[200, 200], [240, 200]], { "line-gap-width": 2 }),
+  road("road_path", "main", { key: "path" }, "path", { walking_network: "rwn" }, [[200, 200], [240, 200]], { "line-width": 2 }),
+  road("road_hiking_label", "label", { attachesTo: ["road_hiking"] }, "path", { walking_network: "rwn" }, [[200, 200], [240, 200]]),
   // dynamic landcover: two polygons of different type, one texture copy per type
   {
     layer: { id: "nature_natural", type: "fill", metadata: { [KEY]: { role: "main", group: "nature", keyProperty: "type" } }, paint: { "fill-color": asToString("rgba(120,180,90,1)") }, layout: {} },

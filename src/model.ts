@@ -35,6 +35,8 @@ export type BuildLegendModelInput = {
 
 /** Order used for entries/groups the manifest does not order. */
 const UNORDERED = 1_000_000;
+/** Supporting roles that carry text — they never contribute strokes to a swatch. */
+const TEXT_ROLES = new Set(["label", "shield"]);
 
 /** Turn an evaluated style value (string, number, Color, Formatted, ResolvedImage …) into a string. */
 export function valueToString(value: unknown): string | undefined {
@@ -49,11 +51,20 @@ export function valueToString(value: unknown): string | undefined {
   return undefined;
 }
 
-/** Numeric arrays arrive either as plain arrays or as MapLibre `NumberArray` objects (`{ values }`). */
+/**
+ * Numeric arrays arrive as plain arrays, as MapLibre `NumberArray` objects
+ * (`{ values }`) or — for cross-faded properties such as `line-dasharray` — as
+ * `{ from, to }` pairs for the zoom transition, of which `to` is the current value.
+ */
 export function valueToNumbers(value: unknown): number[] | undefined {
-  const arr = Array.isArray(value) ? value : value && typeof value === "object" && Array.isArray((value as { values?: unknown }).values) ? (value as { values: unknown[] }).values : undefined;
-  if (!arr || !arr.length || !arr.every((v) => typeof v === "number" && Number.isFinite(v))) return undefined;
-  return arr as number[];
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const obj = value as { to?: unknown; from?: unknown; values?: unknown };
+    if (obj.to !== undefined || obj.from !== undefined) return valueToNumbers(obj.to ?? obj.from);
+    if (Array.isArray(obj.values)) return valueToNumbers(obj.values);
+    return undefined;
+  }
+  if (!Array.isArray(value) || !value.length || !value.every((v) => typeof v === "number" && Number.isFinite(v))) return undefined;
+  return value as number[];
 }
 
 /**
@@ -274,6 +285,29 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
   for (const [k, perLayer] of support) {
     const entry = entries.get(k)!;
     for (const { feature, role } of perLayer.values()) entry.swatch.push(swatchLayerOf(feature, role, layerOrder));
+  }
+
+  // Overlays (routes, cycle lanes) are drawn onto other roads: show the whole
+  // rendered stack of the representative feature — every non-crossing copy of
+  // it in the group, e.g. hiking band + path casing + path — not the band alone.
+  const copiesByIdentity = new Map<string, RenderedFeature[]>();
+  for (const feature of features) {
+    const id = featureIdentity(feature);
+    if (!copiesByIdentity.has(id)) copiesByIdentity.set(id, []);
+    copiesByIdentity.get(id)!.push(feature);
+  }
+  for (const [entryKey, copies] of mainCopies) {
+    const entry = entries.get(entryKey);
+    const rep = copies.find((c) => !c.tag.crossing) ?? copies[0];
+    if (!entry || !rep.tag.overlay) continue;
+    const seen = new Set(entry.swatch.map((l) => l.id));
+    for (const copy of copiesByIdentity.get(featureIdentity(rep.feature)) ?? []) {
+      const tag = tagOf(copy);
+      if (!tag || tag.hidden || tag.crossing || tag.group !== rep.tag.group || tag.instance || seen.has(copy.layer.id)) continue;
+      if (TEXT_ROLES.has(tag.role ?? "")) continue;
+      seen.add(copy.layer.id);
+      entry.swatch.push(swatchLayerOf(copy, tag.role ?? "main", layerOrder));
+    }
   }
 
   // Pass 3 — one instance entry per key: inside the margin first, then lowest rank, then closest to the centre.

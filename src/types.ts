@@ -24,6 +24,12 @@ export type LegendLayerTag = {
   rankProperty?: string;
   /** Set on bridge/tunnel duplicates of a layer; swatches prefer ground-level copies. */
   crossing?: string;
+  /**
+   * Main layers drawn onto other features (hiking/cycling routes, cycle lanes):
+   * the swatch shows the whole rendered stack of the feature — the route with
+   * the road it runs on — not the route layer alone.
+   */
+  overlay?: boolean;
 };
 
 export type LegendManifestItem = { label?: LegendLabel; order?: number; hidden?: boolean };

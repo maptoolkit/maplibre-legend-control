@@ -35,6 +35,13 @@ describe("buildLegendModel", () => {
     expect(motorway.swatch.some((l) => l.id === "road_major_blur_bridge")).toBe(false);
   });
 
+  it("shows overlays with the full stack of their feature — the route and the road it runs on", () => {
+    const hiking = entry("road:hiking")!;
+    expect(hiking.swatch.map((l) => `${l.id}:${l.role}`)).toEqual(["road_hiking:main", "road_path_casing:casing", "road_path:main", "road_hiking_label:label"]);
+    // the path entry itself keeps its own stack
+    expect(entry("road:path")?.swatch.map((l) => l.id)).toEqual(["road_path_casing", "road_path"]);
+  });
+
   it("only falls back to a bridge/tunnel copy when nothing else is rendered", () => {
     const bridgeOnly = features.filter((f) => f.layer.id.endsWith("_bridge"));
     const m = build({ features: bridgeOnly });
@@ -87,6 +94,8 @@ describe("helpers", () => {
   it("valueToNumbers accepts arrays and NumberArray-shaped objects", () => {
     expect(valueToNumbers([2, 3])).toEqual([2, 3]);
     expect(valueToNumbers({ values: [0.1, 8] })).toEqual([0.1, 8]);
+    expect(valueToNumbers({ from: [1, 1], to: [2, 3] })).toEqual([2, 3]); // cross-faded: the current zoom's value
+    expect(valueToNumbers({ from: [1, 1] })).toEqual([1, 1]);
     expect(valueToNumbers({ values: [] })).toBeUndefined();
     expect(valueToNumbers("2 3")).toBeUndefined();
     expect(valueToNumbers([1, "x"])).toBeUndefined();

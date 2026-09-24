@@ -64,7 +64,7 @@ describe("LegendControl", () => {
     const groups = [...container.querySelectorAll(".maplibre-legend-control-group")].map((g) => (g as HTMLElement).dataset.group);
     expect(groups).toEqual(["place", "road", "nature"]);
     const keys = [...container.querySelectorAll(".maplibre-legend-control-entry")].map((e) => (e as HTMLElement).dataset.key);
-    expect(keys).toEqual(["place:town", "place:village", "road:major_dark", "road:minor", "nature:wood", "nature:farmland"]);
+    expect(keys).toEqual(["place:town", "place:village", "road:major_dark", "road:minor", "road:hiking", "road:path", "nature:wood", "nature:farmland"]);
 
     const town = container.querySelector('[data-key="place:town"]') as HTMLElement;
     const name = town.querySelector(".maplibre-legend-control-name") as HTMLElement;

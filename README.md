@@ -75,7 +75,9 @@ evaluated paint and layout, and builds:
   current zoom. Lines are drawn as a curved SVG stroke stack, scaled together
   when too wide; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
-  SDF sprite icons are recoloured with their `icon-color`;
+  Route overlays (tag `overlay`) show the whole stack of their feature — the
+  hiking band together with the path it runs on. SDF sprite icons are
+  recoloured with their `icon-color`;
 - **instance entries** — for standalone label layers (places, waters, POIs) one
   entry per type, showing the most prominent named feature (lowest rank, edge
   features last, then the one closest to the centre) in the map's own font.
