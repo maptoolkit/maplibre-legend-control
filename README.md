@@ -106,7 +106,7 @@ ignored. The contract is documented in
 | `edgeMargin`  | `number`   | `24`                                      | Named features within this many pixels of the viewport edge lose against features further inside. |
 | `groups`      | `string[]` | all                                       | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`). |
 | `updateDelay` | `number`   | `100`                                     | Debounce in ms between the map's `idle` event and the update.                                      |
-| `maxHeightRatio` | `number` | `0.4`                                    | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width. |
+| `maxHeightRatio` | `number` | `0.6`                                    | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width. |
 
 ## Methods
 

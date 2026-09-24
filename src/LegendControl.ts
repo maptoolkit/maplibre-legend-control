@@ -39,7 +39,7 @@ export type LegendControlOptions = {
    * Maximum height of the legend as a fraction of the map container's height;
    * the list scrolls beyond it. The width follows the content (no label is
    * clipped) up to the map's width.
-   * @defaultValue `0.4`
+   * @defaultValue `0.6`
    */
   maxHeightRatio?: number;
 };
@@ -51,7 +51,7 @@ export const defaultLegendControlOptions: LegendControlOptions = {
   collapsed: false,
   edgeMargin: 24,
   updateDelay: 100,
-  maxHeightRatio: 0.4,
+  maxHeightRatio: 0.6,
 };
 
 const CLASS = "maplibre-legend-control";
@@ -229,7 +229,7 @@ export class LegendControl implements IControl {
     const height = box?.clientHeight ?? 0;
     const width = box?.clientWidth ?? 0;
     if (height > 0) {
-      const ratio = this.options.maxHeightRatio ?? 0.4;
+      const ratio = this.options.maxHeightRatio ?? 0.6;
       const header = this._header?.offsetHeight ?? 0;
       this._list.style.maxHeight = `${Math.max(48, Math.round(height * ratio) - header)}px`;
     }

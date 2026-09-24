@@ -82,3 +82,16 @@ describe("wide strokes", () => {
     expect(svg.querySelector("g")?.getAttribute("transform")).toMatch(/^translate\(1.5 0\)/);
   });
 });
+
+describe("caps", () => {
+  it("rounds the ends of solid strokes but keeps the layer cap for dashes", () => {
+    const solid = { id: "c", type: "line", role: "casing", order: 0, paint: { "line-color": "#000", "line-width": 4 }, layout: { "line-cap": "butt" } };
+    const dashed = { id: "h", type: "line", role: "hatching", order: 1, paint: { "line-color": "#000", "line-width": 6, "line-dasharray": [0.1, 8] }, layout: { "line-cap": "butt" } };
+    const svg = createLineSwatch([solid, dashed]);
+    const [c, h] = [...svg.querySelectorAll("path")];
+    expect(c.getAttribute("stroke-linecap")).toBe("round");
+    expect(h.getAttribute("stroke-linecap")).toBe("butt");
+    expect(h.getAttribute("stroke-dasharray")).toBe("0.6 48");
+    expect(h.getAttribute("stroke-dashoffset")).toBe("-24.6");
+  });
+});

@@ -89,6 +89,8 @@ describe("LegendControl", () => {
 
     const minor = container.querySelector('[data-key="road:minor"] path.maplibre-legend-control-stroke-main') as SVGPathElement;
     expect(minor.getAttribute("stroke-dasharray")).toBe("10 15"); // [2, 3] × width 5
+    expect(minor.getAttribute("stroke-dashoffset")).toBe("-17.5"); // first dash starts half a gap in
+    expect(minor.getAttribute("stroke-linecap")).toBe("round"); // dashed strokes keep the layer's cap
 
     expect(control.getModel()?.groups).toHaveLength(4);
     vi.useRealTimers();
@@ -108,10 +110,10 @@ describe("LegendControl", () => {
     vi.useRealTimers();
   });
 
-  it("caps the list at 40 % of the map height and the panel at the map width", () => {
+  it("caps the list at 60 % of the map height and the panel at the map width", () => {
     const container = new LegendControl().onAdd(createMockMap());
     const list = container.querySelector(".maplibre-legend-control-list") as HTMLElement;
-    expect(list.style.maxHeight).toBe("120px"); // 0.4 × 300, header has no height in jsdom
+    expect(list.style.maxHeight).toBe("180px"); // 0.6 × 300, header has no height in jsdom
     expect(container.style.maxWidth).toBe("380px"); // map width − 20
   });
 

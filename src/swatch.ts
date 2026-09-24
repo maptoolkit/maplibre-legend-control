@@ -167,10 +167,22 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
     path.setAttribute("vector-effect", "non-scaling-stroke");
     path.setAttribute("stroke", stroke.color);
     path.setAttribute("stroke-width", String(Math.max(0.75, stroke.width * scale)));
-    path.setAttribute("stroke-linecap", stroke.cap);
+    // A swatch is a cut-out of the map: its curve ends are not real line ends,
+    // so they get round caps regardless of the layer's line-cap — a butt-capped
+    // casing under a round-capped main otherwise shows as a flat bar. Dashed
+    // strokes keep their cap, it shapes every dash (railway hatch ticks).
+    path.setAttribute("stroke-linecap", stroke.dash ? stroke.cap : "round");
     path.setAttribute("stroke-linejoin", stroke.join);
     if (stroke.opacity < 1) path.setAttribute("stroke-opacity", String(stroke.opacity));
-    if (stroke.dash) path.setAttribute("stroke-dasharray", stroke.dash.map((d) => Math.max(0.5, d * scale)).join(" "));
+    if (stroke.dash) {
+      const round2 = (v: number) => Math.round(v * 100) / 100; // keep attributes free of float noise
+      const dash = stroke.dash.map((d) => round2(Math.max(0.5, d * scale)));
+      path.setAttribute("stroke-dasharray", dash.join(" "));
+      // start inside the gap so the first dash sits inset from the curve's end
+      // instead of being cut by it (a railway's first hatch tick, a ferry's first dash)
+      const [on, off = 0] = dash;
+      path.setAttribute("stroke-dashoffset", String(round2(-(on + off / 2))));
+    }
     if (stroke.blur > 0) path.style.filter = `blur(${Math.min(stroke.blur * scale, 3)}px)`;
     group.appendChild(path);
   }
