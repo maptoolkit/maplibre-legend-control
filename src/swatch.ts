@@ -11,7 +11,7 @@ export type StyleImageLike = {
 export type GetImage = (id: string) => StyleImageLike | undefined | null;
 
 const CLASS = "maplibre-legend-control";
-const SWATCH_W = 56;
+const SWATCH_W = 64;
 const SWATCH_H = 26;
 const MAX_ICON = 24;
 
@@ -88,16 +88,17 @@ function imageToCanvas(image: StyleImageLike, options: { color?: string; haloCol
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 /**
- * Gentle curves through the 56×18 swatch box, so a road reads as a road. One
+ * Gentle curves through the 64×26 swatch box, so a road reads as a road. One
  * of them is picked per entry (see {@link lineVariantFor}) — different entries
- * get different bends, an entry keeps its bend across updates.
+ * get different bends, an entry keeps its bend across updates. The curves run
+ * edge to edge; with butt caps the strokes end flush like a map cut-out.
  */
 const LINE_PATHS = [
-  "M 3 17 C 16 8, 30 18, 53 9",
-  "M 3 9 C 18 18, 34 8, 53 17",
-  "M 3 14 C 12 8, 22 8, 30 13 S 46 18, 53 12",
-  "M 3 18 C 18 18, 30 8, 53 9",
-  "M 3 8 C 12 18, 36 18, 53 17",
+  "M 2 17 C 17.6 8, 34.4 18, 62 9",
+  "M 2 9 C 20 18, 39.2 8, 62 17",
+  "M 2 14 C 12.8 8, 24.8 8, 34.4 13 S 53.6 18, 62 12",
+  "M 2 18 C 20 18, 34.4 8, 62 9",
+  "M 2 8 C 12.8 18, 41.6 18, 62 17",
 ];
 /** Vertical extent of the curves above (all stay within y = 8…18). */
 const PATH_EXTENT = 10;
@@ -152,26 +153,18 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
   svg.setAttribute("width", String(SWATCH_W));
   svg.setAttribute("height", String(SWATCH_H));
   svg.setAttribute("aria-hidden", "true");
-  // Round caps of wide strokes would poke out of the box: pull the curve's ends
-  // in by half the widest stroke. Stroke widths are unaffected by the transform
-  // (vector-effect: non-scaling-stroke), only the curve gets a little shorter.
-  const inset = Math.min(12, (widest * scale) / 2);
-  const group = document.createElementNS(SVG_NS, "g");
-  if (inset > 0) group.setAttribute("transform", `translate(${inset} 0) scale(${(SWATCH_W - 2 * inset) / SWATCH_W} 1)`);
-  svg.appendChild(group);
   for (const stroke of strokes) {
     const path = document.createElementNS(SVG_NS, "path");
     path.setAttribute("class", `${CLASS}-stroke ${CLASS}-stroke-${stroke.role}`);
     path.setAttribute("d", d);
     path.setAttribute("fill", "none");
-    path.setAttribute("vector-effect", "non-scaling-stroke");
     path.setAttribute("stroke", stroke.color);
     path.setAttribute("stroke-width", String(Math.max(0.75, stroke.width * scale)));
     // A swatch is a cut-out of the map: its curve ends are not real line ends,
-    // so they get round caps regardless of the layer's line-cap — a butt-capped
-    // casing under a round-capped main otherwise shows as a flat bar. Dashed
-    // strokes keep their cap, it shapes every dash (railway hatch ticks).
-    path.setAttribute("stroke-linecap", stroke.dash ? stroke.cap : "round");
+    // so solid strokes end flush with butt caps regardless of the layer's
+    // line-cap. Dashed strokes keep their cap, it shapes every dash (railway
+    // hatch ticks, rounded ferry dashes).
+    path.setAttribute("stroke-linecap", stroke.dash ? stroke.cap : "butt");
     path.setAttribute("stroke-linejoin", stroke.join);
     if (stroke.opacity < 1) path.setAttribute("stroke-opacity", String(stroke.opacity));
     if (stroke.dash) {
@@ -184,7 +177,7 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
       path.setAttribute("stroke-dashoffset", String(round2(-(on + off / 2))));
     }
     if (stroke.blur > 0) path.style.filter = `blur(${Math.min(stroke.blur * scale, 3)}px)`;
-    group.appendChild(path);
+    svg.appendChild(path);
   }
   box.appendChild(svg);
   return box;

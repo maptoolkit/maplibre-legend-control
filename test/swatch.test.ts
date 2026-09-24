@@ -71,25 +71,21 @@ describe("wide strokes", () => {
     const widths = [...svg.querySelectorAll("path")].map((p) => Number(p.getAttribute("stroke-width")));
     expect(Math.max(...widths)).toBeCloseTo(16, 5); // 26 px box − 10 px curve extent
     expect(widths[1] / widths[0]).toBeCloseTo(24 / 28, 5);
-    // round caps are pulled in by half the widest stroke
-    expect(svg.querySelector("g")?.getAttribute("transform")).toMatch(/^translate\(8 0\) scale\(/);
-    expect(svg.querySelector("path")?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
   });
 
-  it("leaves narrow stacks unscaled and barely inset", () => {
+  it("leaves narrow stacks unscaled", () => {
     const svg = createLineSwatch([mk("main", "main", 3)]);
     expect(svg.querySelector("path")?.getAttribute("stroke-width")).toBe("3");
-    expect(svg.querySelector("g")?.getAttribute("transform")).toMatch(/^translate\(1.5 0\)/);
   });
 });
 
 describe("caps", () => {
-  it("rounds the ends of solid strokes but keeps the layer cap for dashes", () => {
-    const solid = { id: "c", type: "line", role: "casing", order: 0, paint: { "line-color": "#000", "line-width": 4 }, layout: { "line-cap": "butt" } };
+  it("cuts solid strokes flush with butt caps but keeps the layer cap for dashes", () => {
+    const solid = { id: "c", type: "line", role: "casing", order: 0, paint: { "line-color": "#000", "line-width": 4 }, layout: { "line-cap": "round" } };
     const dashed = { id: "h", type: "line", role: "hatching", order: 1, paint: { "line-color": "#000", "line-width": 6, "line-dasharray": [0.1, 8] }, layout: { "line-cap": "butt" } };
     const svg = createLineSwatch([solid, dashed]);
     const [c, h] = [...svg.querySelectorAll("path")];
-    expect(c.getAttribute("stroke-linecap")).toBe("round");
+    expect(c.getAttribute("stroke-linecap")).toBe("butt");
     expect(h.getAttribute("stroke-linecap")).toBe("butt");
     expect(h.getAttribute("stroke-dasharray")).toBe("0.6 48");
     expect(h.getAttribute("stroke-dashoffset")).toBe("-24.6");

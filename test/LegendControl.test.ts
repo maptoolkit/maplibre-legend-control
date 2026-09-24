@@ -85,7 +85,7 @@ describe("LegendControl", () => {
     const strokes = [...motorway.querySelectorAll("path.maplibre-legend-control-stroke")];
     expect(strokes).toHaveLength(3); // blur + casing + main (label is no stroke)
     expect(strokes.map((p) => p.getAttribute("stroke-width"))).toEqual(["5", "7", "5"]); // casing = gap 5 + 2 × 1
-    expect(strokes[2].getAttribute("stroke-linecap")).toBe("round");
+    expect(strokes[2].getAttribute("stroke-linecap")).toBe("butt"); // solid strokes end flush
 
     const minor = container.querySelector('[data-key="road:minor"] path.maplibre-legend-control-stroke-main') as SVGPathElement;
     expect(minor.getAttribute("stroke-dasharray")).toBe("10 15"); // [2, 3] × width 5
