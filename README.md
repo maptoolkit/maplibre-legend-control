@@ -72,7 +72,8 @@ evaluated paint and layout, and builds:
 - **class entries** — one per rendered main layer key (motorway, forest, country
   border …), with a swatch stacked from the layer and its casing/blur/texture
   layers using the evaluated colours, widths, gaps and dash patterns at the
-  current zoom. Lines are drawn as a curved SVG stroke stack — one of a few
+  current zoom (a casing's gap is masked out, not painted, so a translucent
+  road still shows the route band beneath it). Lines are drawn as a curved SVG stroke stack — one of a few
   bends, chosen per entry so rows differ but stay put across updates — scaled
   together when too wide; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.

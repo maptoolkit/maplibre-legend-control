@@ -116,7 +116,7 @@ const PATH_EXTENT = 10;
  */
 const MAX_STROKE = SWATCH_H - PATH_EXTENT;
 
-type Stroke = { color: string; width: number; opacity: number; blur: number; dash?: number[]; cap: string; join: string; role: string };
+type Stroke = { color: string; width: number; gap: number; opacity: number; blur: number; dash?: number[]; cap: string; join: string; role: string };
 
 function strokeOf(layer: SwatchLayer): Stroke | undefined {
   if (layer.type !== "line") return undefined;
@@ -126,10 +126,11 @@ function strokeOf(layer: SwatchLayer): Stroke | undefined {
   const gap = Math.max(0, num(layer.paint["line-gap-width"], 0));
   return {
     color,
-    // MapLibre draws a gap layer as two parallel strokes `gap` apart; drawn
-    // below the main stroke (which is `gap` wide) a single stroke of
-    // gap + 2·width looks the same — the casing outline.
+    // MapLibre draws a gap layer as two parallel strokes `gap` apart: the
+    // outer extent is gap + 2·width, the gap itself is masked out when drawn
+    // (see gapMask) so whatever lies below stays visible through it.
     width: gap > 0 ? gap + 2 * width : width,
+    gap,
     opacity: clamp(num(layer.paint["line-opacity"], 1), 0, 1),
     blur: Math.max(0, num(layer.paint["line-blur"], 0)),
     // dash lengths are multiples of the line width
@@ -140,11 +141,44 @@ function strokeOf(layer: SwatchLayer): Stroke | undefined {
   };
 }
 
+let maskSeq = 0;
+
+/**
+ * A gap stroke is two parallel strokes: the full-width path masked out along
+ * the gap. The map shows what lies between them — a translucent road over the
+ * hiking band beneath it — so the gap must not be painted in the casing colour.
+ */
+function gapMask(path: SVGElement, d: string, stroke: Stroke, scale: number): SVGElement {
+  const id = `${CLASS}-gap-${++maskSeq}`;
+  const mask = document.createElementNS(SVG_NS, "mask");
+  mask.setAttribute("id", id);
+  mask.setAttribute("maskUnits", "userSpaceOnUse");
+  mask.setAttribute("x", "0");
+  mask.setAttribute("y", "0");
+  mask.setAttribute("width", String(SWATCH_W));
+  mask.setAttribute("height", String(SWATCH_H));
+  const keep = document.createElementNS(SVG_NS, "rect");
+  keep.setAttribute("width", String(SWATCH_W));
+  keep.setAttribute("height", String(SWATCH_H));
+  keep.setAttribute("fill", "white");
+  const cut = document.createElementNS(SVG_NS, "path");
+  cut.setAttribute("class", `${CLASS}-gap`);
+  cut.setAttribute("d", d);
+  cut.setAttribute("fill", "none");
+  cut.setAttribute("stroke", "black");
+  cut.setAttribute("stroke-width", String(stroke.gap * scale));
+  cut.setAttribute("stroke-linecap", "butt");
+  cut.setAttribute("stroke-linejoin", stroke.join);
+  mask.append(keep, cut);
+  path.setAttribute("mask", `url(#${id})`);
+  return mask;
+}
+
 /**
  * Stacked line strokes on a curved path: blur/casing below, the main stroke on
- * top, dash arrays, caps and blur from the evaluated layers. All strokes are
- * scaled together when the widest would not fit, so casing and main keep their
- * ratio at every zoom.
+ * top, dash arrays, caps and blur from the evaluated layers; a casing's gap is
+ * masked out, not painted. All strokes are scaled together when the widest
+ * would not fit, so casing and main keep their ratio at every zoom.
  */
 export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElement {
   const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-line`);
@@ -184,6 +218,7 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
       path.setAttribute("stroke-dashoffset", String(round2(-(on + off / 2))));
     }
     if (stroke.blur > 0) path.style.filter = `blur(${Math.min(stroke.blur * scale, 3)}px)`;
+    if (stroke.gap > 0) svg.appendChild(gapMask(path, d, stroke, scale));
     svg.appendChild(path);
   }
   box.appendChild(svg);

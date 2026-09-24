@@ -69,9 +69,20 @@ describe("wide strokes", () => {
   it("scales the stack so the widest stroke plus the curve fits the box, keeping ratios", () => {
     // z18 motorway: 24 px main, casing 2 px around a 24 px gap = 28 px
     const svg = createLineSwatch([mk("casing", "casing", 2, 24), mk("main", "main", 24)]);
-    const widths = [...svg.querySelectorAll("path")].map((p) => Number(p.getAttribute("stroke-width")));
+    const widths = [...svg.querySelectorAll("path.maplibre-legend-control-stroke")].map((p) => Number(p.getAttribute("stroke-width")));
     expect(Math.max(...widths)).toBeCloseTo(16, 5); // 26 px box − 10 px curve extent
     expect(widths[1] / widths[0]).toBeCloseTo(24 / 28, 5);
+  });
+
+  it("keeps a casing's gap see-through instead of painting it in the casing colour", () => {
+    const svg = createLineSwatch([mk("casing", "casing", 2, 24), mk("main", "main", 24)]);
+    const casing = svg.querySelector("path.maplibre-legend-control-stroke-casing") as SVGPathElement;
+    const ref = casing.getAttribute("mask")?.match(/^url\(#(.+)\)$/)?.[1];
+    expect(ref).toBeTruthy();
+    const cut = svg.querySelector(`mask[id="${ref}"] path`) as SVGPathElement;
+    expect(cut.getAttribute("stroke")).toBe("black");
+    expect(Number(cut.getAttribute("stroke-width"))).toBeCloseTo((24 * 16) / 28, 5); // the gap, scaled like the strokes
+    expect(svg.querySelector("path.maplibre-legend-control-stroke-main")?.getAttribute("mask")).toBeNull();
   });
 
   it("leaves narrow stacks unscaled", () => {
@@ -83,7 +94,14 @@ describe("wide strokes", () => {
 describe("caps", () => {
   it("cuts solid strokes flush with butt caps but keeps the layer cap for dashes", () => {
     const solid = { id: "c", type: "line", role: "casing", order: 0, paint: { "line-color": "#000", "line-width": 4 }, layout: { "line-cap": "round" } };
-    const dashed = { id: "h", type: "line", role: "hatching", order: 1, paint: { "line-color": "#000", "line-width": 6, "line-dasharray": [0.1, 8] }, layout: { "line-cap": "butt" } };
+    const dashed = {
+      id: "h",
+      type: "line",
+      role: "hatching",
+      order: 1,
+      paint: { "line-color": "#000", "line-width": 6, "line-dasharray": [0.1, 8] },
+      layout: { "line-cap": "butt" },
+    };
     const svg = createLineSwatch([solid, dashed]);
     const [c, h] = [...svg.querySelectorAll("path")];
     expect(c.getAttribute("stroke-linecap")).toBe("butt");
@@ -95,7 +113,14 @@ describe("caps", () => {
 
 describe("fill swatch borders", () => {
   it("draws line layers of the stack as a (dashed) border around the box", () => {
-    const fill = { id: "water_intermittent", type: "fill", role: "main", order: 0, paint: { "fill-color": "rgba(170,200,230,1)", "fill-opacity": 0.8 }, layout: {} };
+    const fill = {
+      id: "water_intermittent",
+      type: "fill",
+      role: "main",
+      order: 0,
+      paint: { "fill-color": "rgba(170,200,230,1)", "fill-opacity": 0.8 },
+      layout: {},
+    };
     const casing = {
       id: "water_intermittent_casing",
       type: "line",
@@ -123,7 +148,14 @@ describe("fill swatch borders", () => {
 describe("fill patterns", () => {
   it("asks the map for the pattern image named by a cross-faded fill-pattern", () => {
     const fill = { id: "nature_natural", type: "fill", role: "main", order: 0, paint: { "fill-color": "#9c9" }, layout: {} };
-    const texture = { id: "nature_natural_texture", type: "fill", role: "texture", order: 1, paint: { "fill-pattern": { from: { name: "nature:wood" }, to: { name: "nature:wood" } } }, layout: {} };
+    const texture = {
+      id: "nature_natural_texture",
+      type: "fill",
+      role: "texture",
+      order: 1,
+      paint: { "fill-pattern": { from: { name: "nature:wood" }, to: { name: "nature:wood" } } },
+      layout: {},
+    };
     const getImage = vi.fn(() => undefined);
     createFillSwatch(fill, getImage, [texture]);
     expect(getImage).toHaveBeenCalledWith("nature:wood");
@@ -132,8 +164,22 @@ describe("fill patterns", () => {
 
 describe("fill swatch shadows", () => {
   it("renders a blurred shadow stroke as a soft halo instead of a frame", () => {
-    const fill = { id: "building_footprint", type: "fill", role: "main", order: 1, paint: { "fill-color": "rgba(230,230,230,1)", "fill-outline-color": "rgba(200,200,200,1)" }, layout: {} };
-    const shadow = { id: "building_shadow", type: "line", role: "shadow", order: 0, paint: { "line-color": "rgba(60,50,40,1)", "line-width": 12, "line-blur": 13, "line-opacity": 0.3 }, layout: { "line-cap": "butt" } };
+    const fill = {
+      id: "building_footprint",
+      type: "fill",
+      role: "main",
+      order: 1,
+      paint: { "fill-color": "rgba(230,230,230,1)", "fill-outline-color": "rgba(200,200,200,1)" },
+      layout: {},
+    };
+    const shadow = {
+      id: "building_shadow",
+      type: "line",
+      role: "shadow",
+      order: 0,
+      paint: { "line-color": "rgba(60,50,40,1)", "line-width": 12, "line-blur": 13, "line-opacity": 0.3 },
+      layout: { "line-cap": "butt" },
+    };
     const box = createFillSwatch(fill, undefined, [shadow]);
     expect(box.querySelector("rect")).toBeNull(); // no crisp border
     expect(box.style.boxShadow).toContain("inset 0 0 0 1px"); // the outline hairline stays
