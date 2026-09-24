@@ -124,12 +124,6 @@
   min-height: var(--legend-control-row-height);
   padding: 3px 0;
 }
-.maplibre-legend-control .maplibre-legend-control-visual-start {
-  justify-self: start;
-}
-.maplibre-legend-control .maplibre-legend-control-visual-end {
-  justify-self: end;
-}
 .maplibre-legend-control .maplibre-legend-control-label {
   min-width: 0;
   min-height: var(--legend-control-row-height);

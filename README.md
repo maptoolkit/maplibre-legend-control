@@ -93,8 +93,9 @@ Every row follows one rule: **left what the map shows, right the explanation** â
 a stroke stack or fill for a class entry, the symbol itself for an instance
 entry; the manifest label (or the humanized key) on the right, right-aligned.
 The list is one grid across all groups, so the left column is as wide as the
-widest symbol and centred labels share one centre axis; left- or right-justified
-labels sit at the column's edge.
+widest symbol and every block sits on one centre axis; `text-justify` only
+aligns the lines inside a block (a peak keeps its elevation left-aligned under
+its name).
 
 Similar-looking types can share one row: a manifest entry may list the `keys`
 it stands for (`place:village` for `place:hamlet`, `place:farm`, â€¦), and the

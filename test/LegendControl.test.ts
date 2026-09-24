@@ -121,14 +121,17 @@ describe("LegendControl", () => {
     expect(container.style.maxWidth).toBe("380px"); // map width − 20
   });
 
-  it("aligns left-justified symbols at the column start, everything else on the centre axis", () => {
+  it("centres every block on the column axis and keeps text-justify inside the block", () => {
     vi.useFakeTimers();
     const container = new LegendControl({ language: "de", updateDelay: 0 }).onAdd(createMockMap());
     vi.runAllTimers();
-    const town = container.querySelector('[data-key="place:town"] .maplibre-legend-control-visual') as HTMLElement;
-    expect(town.classList.contains("maplibre-legend-control-visual-start")).toBe(false);
-    const peak = container.querySelector('[data-key="poi:peak"] .maplibre-legend-control-visual') as HTMLElement;
-    expect(peak.classList.contains("maplibre-legend-control-visual-start")).toBe(true);
+    for (const visual of container.querySelectorAll(".maplibre-legend-control-visual")) {
+      expect(visual.className).toBe("maplibre-legend-control-visual"); // no per-entry alignment class
+    }
+    const peakText = container.querySelector('[data-key="poi:peak"] .maplibre-legend-control-symbol-text') as HTMLElement;
+    expect(peakText.style.textAlign).toBe("left"); // "Großglockner" / "3798 m" stay left-aligned to each other
+    const townText = container.querySelector('[data-key="place:town"] .maplibre-legend-control-symbol-text') as HTMLElement;
+    expect(townText.style.textAlign).toBe(""); // no justify on the layer → the stylesheet's centre
     vi.useRealTimers();
   });
 

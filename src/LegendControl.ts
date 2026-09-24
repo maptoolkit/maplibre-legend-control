@@ -347,12 +347,10 @@ export class LegendControl implements IControl {
         li.dataset.key = entry.key;
 
         // left: what the map shows (swatch of the layer stack, or the symbol with its label); right: the explanation.
-        // Centred text shares the column's centre axis; left/right-justified labels sit at the column's edge.
+        // Every block is centred on the column's axis; text-justify only aligns the lines inside the block
+        // (a peak keeps its elevation left-aligned under the name).
         const visual = document.createElement("span");
         visual.classList.add(`${CLASS}-visual`);
-        const justify = entry.kind === "instance" ? entry.text?.justify : undefined;
-        if (justify === "left") visual.classList.add(`${CLASS}-visual-start`);
-        else if (justify === "right") visual.classList.add(`${CLASS}-visual-end`);
         visual.appendChild(entry.kind === "instance" ? createSymbolPreview(entry, getImage) : createSwatch(entry.swatch, getImage, lineVariantFor(entry.key)));
         li.appendChild(visual);
 
