@@ -1,0 +1,47 @@
+.maplibre-legend-control {
+  /* design tokens used by this control, scoped here so nothing leaks into a
+     consumer's global :root. Values follow the maptoolkit control skin. */
+  --legend-control-font-family: "Mulish", "Helvetica Neue", Arial, sans-serif;
+  --legend-control-duration: 200ms;
+  --legend-control-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --legend-control-map: 0 2px 8px rgba(25, 31, 57, 0.15), 0 0 0 1px rgba(25, 31, 57, 0.06);
+  --legend-control-border-color: #e1e2ea;
+  --legend-control-bg-color: #ffffff;
+  --legend-control-bg-subtle: #f6f6f9;
+  --legend-control-radius: 8px;
+  --legend-control-radius-sm: 4px;
+  --legend-control-space-2: 8px;
+  --legend-control-space-3: 12px;
+  --legend-control-space-4: 16px;
+  --legend-control-color-fg-strong: #282932;
+  --legend-control-color-fg-muted: #656776;
+  --legend-control-color-primary: #4054a5;
+  --legend-control-width: 260px;
+
+  box-sizing: border-box;
+  width: var(--legend-control-width);
+  max-width: 100%;
+  padding: var(--legend-control-space-3) var(--legend-control-space-4);
+  font-family: var(--legend-control-font-family);
+  color: var(--legend-control-color-fg-strong);
+  background: var(--legend-control-bg-color);
+  border-radius: var(--legend-control-radius);
+}
+.maplibre-legend-control:not(:empty) {
+  box-shadow: var(--legend-control-map);
+}
+.maplibre-legend-control .maplibre-legend-control-title {
+  margin: 0 0 var(--legend-control-space-2) 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.maplibre-legend-control .maplibre-legend-control-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 60vh;
+  overflow: auto;
+}
+.maplibre-legend-control.maplibre-legend-control-collapsed .maplibre-legend-control-list {
+  display: none;
+}
