@@ -77,8 +77,9 @@ evaluated paint and layout, and builds:
   comes from one of four families, picked by how the feature runs on the map —
   straight with sharp bends for aerial lifts, gentle for major roads, railways,
   ferries and admin borders, wavier for minor roads, pistes, cycle routes and
-  waterways, winding for paths and contours — one of its shapes per entry, so
-  rows differ but stay put across updates — scaled
+  waterways, winding for paths and contours — one of its shapes per entry,
+  taken from the layer's position in the style so that layers drawn next to
+  each other never share a shape, stable across updates — scaled
   together when too wide; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the

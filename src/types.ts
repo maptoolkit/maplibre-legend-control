@@ -113,6 +113,13 @@ export type LegendEntry = {
   icon?: SwatchLayer;
   /** Class entries: main + supporting layers, bottom to top. */
   swatch: SwatchLayer[];
+  /**
+   * Which shape of its family the swatch is drawn with (see `createSwatch`).
+   * The main layer's position in the style, so layers that sit next to each
+   * other — and end up next to each other in the legend — never share a shape;
+   * for a layer with a dynamic key its entries are spread by the key's hash.
+   */
+  variant: number;
   order: number;
 };
 

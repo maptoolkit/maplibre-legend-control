@@ -11,6 +11,7 @@ import {
   type SwatchLayer,
   type TextStyle,
 } from "./types";
+import { swatchVariantFor } from "./swatch";
 
 /** Viewport geometry the instance selection needs; `project` maps [lng, lat] to CSS pixels. */
 export type Viewport = {
@@ -261,12 +262,17 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
   for (const [entryKey, copies] of mainCopies) {
     const best = copies.find((c) => !c.tag.crossing) ?? copies[0];
     representative.set(entryKey, featureIdentity(best.feature));
+    const main = swatchLayerOf(best.feature, "main", layerOrder);
     entries.set(entryKey, {
       key: entryKey,
       group: best.tag.group!,
       kind: "class",
       label: pickLabel(manifestEntries[entryKey]?.label, language) ?? humanize(entryKey),
-      swatch: [swatchLayerOf(best.feature, "main", layerOrder)],
+      swatch: [main],
+      // The layer's position spreads sibling layers (they are consecutive in
+      // the style, so they never share a shape); one layer holding many entries
+      // spreads them by the key instead.
+      variant: main.order + (best.tag.keyProperty ? swatchVariantFor(entryKey) : 0),
       order: manifestEntries[entryKey]?.order ?? UNORDERED,
     });
   }
@@ -345,6 +351,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       text: textStyleOf(best.feature),
       icon: layout["icon-image"] ? swatchLayerOf(best.feature, "icon", layerOrder) : undefined,
       swatch: [],
+      variant: 0, // instance entries draw the map's own symbol, not a shape
       order: manifestEntries[entryKey]?.order ?? UNORDERED,
     });
   }
@@ -365,7 +372,8 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     groups.get(entry.group)!.entries.push(entry);
   }
   const collator = new Intl.Collator(language);
-  for (const g of groups.values()) g.entries.sort((a, b) => a.order - b.order || collator.compare(a.label, b.label) || collator.compare(a.name ?? "", b.name ?? ""));
+  for (const g of groups.values())
+    g.entries.sort((a, b) => a.order - b.order || collator.compare(a.label, b.label) || collator.compare(a.name ?? "", b.name ?? ""));
 
   return { groups: [...groups.values()].sort((a, b) => a.order - b.order || collator.compare(a.label, b.label)) };
 }

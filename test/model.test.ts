@@ -1,11 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { buildLegendModel, geometryAnchor, humanize, pickLabel, valueToNumbers, valueToString } from "../src/model";
+import { swatchVariantFor } from "../src/swatch";
 import { features, layerOrder, manifest, queryFixtures, viewport } from "./fixtures";
 
 /** The control's edge test, reproduced for the fixtures: cut = touches one of the four 5 % bands. */
 const fullyVisible = (list = features) => {
-  const w = viewport.width, h = viewport.height, bx = Math.round(w * 0.05), by = Math.round(h * 0.05);
-  const bands: Array<[[number, number], [number, number]]> = [[[0, 0], [w, by]], [[0, h - by], [w, h]], [[0, 0], [bx, h]], [[w - bx, 0], [w, h]]];
+  const w = viewport.width,
+    h = viewport.height,
+    bx = Math.round(w * 0.05),
+    by = Math.round(h * 0.05);
+  const bands: Array<[[number, number], [number, number]]> = [
+    [
+      [0, 0],
+      [w, by],
+    ],
+    [
+      [0, h - by],
+      [w, h],
+    ],
+    [
+      [0, 0],
+      [bx, h],
+    ],
+    [
+      [w - bx, 0],
+      [w, h],
+    ],
+  ];
   const cut = new Set(bands.flatMap((b) => queryFixtures(list, b)).filter((f) => f.layer.type === "symbol"));
   return (f: (typeof features)[number]) => !cut.has(f);
 };
@@ -27,9 +48,27 @@ describe("buildLegendModel", () => {
   it("makes one class entry per main layer key and stacks its supporting layers bottom to top", () => {
     const motorway = entry("road:major_dark");
     expect(motorway).toMatchObject({ kind: "class", label: "Hauptstraße" });
-    expect(motorway?.swatch.map((l) => `${l.id}:${l.role}`)).toEqual(["road_major_blur:blur", "road_major_casing:casing", "road_major_dark:main", "road_major_label:label"]);
+    expect(motorway?.swatch.map((l) => `${l.id}:${l.role}`)).toEqual([
+      "road_major_blur:blur",
+      "road_major_casing:casing",
+      "road_major_dark:main",
+      "road_major_label:label",
+    ]);
     // the casing also attaches to the minor road, the blur does not
     expect(entry("road:minor")?.swatch.map((l) => l.id)).toEqual(["road_major_casing", "road_minor"]);
+  });
+
+  it("takes the swatch shape from the main layer's position, and from the key where one layer holds many entries", () => {
+    // layers drawn next to each other are next to each other in the legend: different positions, so different shapes
+    expect(entry("road:minor")?.variant).toBe(5);
+    expect(entry("road:major_dark")?.variant).toBe(6); // the ground-level copy, not the bridge at 6.7
+    expect(entry("road:path")?.variant).toBe(3.4);
+    // nature_natural carries every landcover type: one position, so the key spreads them
+    expect(entry("nature:wood")?.variant).toBe(1 + swatchVariantFor("nature:wood"));
+    expect(entry("nature:farmland")?.variant).toBe(1 + swatchVariantFor("nature:farmland"));
+    expect(entry("nature:wood")?.variant).not.toBe(entry("nature:farmland")?.variant);
+    // instance entries draw the map's own symbol
+    expect(entry("place:town")?.variant).toBe(0);
   });
 
   it("represents an entry by a ground-level copy and stacks copies of the very same feature", () => {
@@ -75,10 +114,17 @@ describe("buildLegendModel", () => {
   });
 
   it("merges stop when the target is hidden and vanish without the manifest", () => {
-    const hidden = build({ manifest: { ...manifest, entries: { ...manifest.entries, "place:village": { ...manifest.entries!["place:village"], hidden: true } } } });
+    const hidden = build({
+      manifest: { ...manifest, entries: { ...manifest.entries, "place:village": { ...manifest.entries!["place:village"], hidden: true } } },
+    });
     expect(hidden.groups.find((g) => g.id === "place")?.entries.map((e) => e.key)).toEqual(["place:town"]);
     const plain = build({ manifest: undefined });
-    expect(plain.groups.find((g) => g.id === "place")?.entries.map((e) => e.key).sort()).toEqual(["place:hamlet", "place:town", "place:village"]);
+    expect(
+      plain.groups
+        .find((g) => g.id === "place")
+        ?.entries.map((e) => e.key)
+        .sort(),
+    ).toEqual(["place:hamlet", "place:town", "place:village"]);
   });
 
   it("drops labels cut by the edge buffer instead of falling back to them", () => {
@@ -145,9 +191,42 @@ describe("helpers", () => {
 
   it("geometryAnchor returns a representative position per geometry type", () => {
     expect(geometryAnchor({ type: "Point", coordinates: [1, 2] })).toEqual([1, 2]);
-    expect(geometryAnchor({ type: "LineString", coordinates: [[0, 0], [2, 2], [4, 4]] })).toEqual([2, 2]);
-    expect(geometryAnchor({ type: "Polygon", coordinates: [[[0, 0], [4, 0], [4, 4], [0, 4]]] })).toEqual([2, 2]);
-    expect(geometryAnchor({ type: "MultiLineString", coordinates: [[[0, 0]], [[1, 1], [3, 3], [5, 5]]] })).toEqual([3, 3]);
+    expect(
+      geometryAnchor({
+        type: "LineString",
+        coordinates: [
+          [0, 0],
+          [2, 2],
+          [4, 4],
+        ],
+      }),
+    ).toEqual([2, 2]);
+    expect(
+      geometryAnchor({
+        type: "Polygon",
+        coordinates: [
+          [
+            [0, 0],
+            [4, 0],
+            [4, 4],
+            [0, 4],
+          ],
+        ],
+      }),
+    ).toEqual([2, 2]);
+    expect(
+      geometryAnchor({
+        type: "MultiLineString",
+        coordinates: [
+          [[0, 0]],
+          [
+            [1, 1],
+            [3, 3],
+            [5, 5],
+          ],
+        ],
+      }),
+    ).toEqual([3, 3]);
     expect(geometryAnchor(null)).toBeUndefined();
   });
 });
