@@ -288,12 +288,22 @@ describe("shields (icon-text-fit)", () => {
     layout: { "icon-image": "sdf:square", "icon-text-fit": "both", "icon-text-fit-padding": [2, 5, 4, 5] },
   };
 
+  it("pads a shield that the style barely pads, so a short ref still gets air", () => {
+    const tight = { ...shield, layout: { ...shield.layout, "icon-text-fit-padding": [0, 0, 0, 0] } };
+    const box = createSymbolPreview({ name: "W", text: { fontStack: ["Rosario Bold"], size: 20 }, icon: tight }, () => image);
+    const text = box.querySelector(".maplibre-legend-control-symbol-text") as HTMLElement;
+    expect(text.style.padding).toBe("2.4px 7px"); // 12 % of the size top/bottom, 35 % at the sides
+  });
+
   it("stretches the icon behind the text and pads it, instead of drawing a picture beside it", () => {
     const box = createSymbolPreview({ name: "A22", text: { fontStack: ["Rosario Bold"], size: 12 }, icon: shield }, () => image);
     const text = box.querySelector(".maplibre-legend-control-symbol-text") as HTMLElement;
     expect(box.querySelector(".maplibre-legend-control-symbol-icon")).toBeNull(); // no icon of its own
     expect(text.style.backgroundImage).toContain("data:image"); // the shield is the text's background
     expect(text.style.padding).toBe("2px 5px 4px"); // top right bottom left, the bottom one shifts the number up
+    // the box is exactly the name, so the stretched icon can never come out smaller than it
+    expect(text.style.width).toBe("max-content");
+    expect(text.style.maxWidth).toBe("none");
     expect(text.classList.contains("maplibre-legend-control-symbol-fitted")).toBe(true);
   });
 

@@ -601,17 +601,26 @@ export function textPlacement(text: TextStyle | undefined): "below" | "above" | 
  * instead of a picture of its own. An asymmetric padding shifts the text
  * inside the shield, as on the map.
  */
-function fitIconBehind(textEl: HTMLElement, icon: SwatchLayer, getImage?: GetImage): boolean {
+function fitIconBehind(textEl: HTMLElement, icon: SwatchLayer, text?: TextStyle, getImage?: GetImage): boolean {
   const fit = valueToString(icon.layout["icon-text-fit"]);
   if (!fit || fit === "none") return false;
   // without a drawable canvas the caller falls back to the plain icon
   const drawn = iconCanvasOf(icon, getImage);
   if (!drawn) return false;
   const scale = num(icon.layout["icon-size"], 1);
+  // MapLibre pads the fitted icon by at least a little; without a readable
+  // padding the shield would hug the glyphs (a one-character ref needs air).
   const [top = 0, right = 0, bottom = 0, left = 0] = (valueToNumbers(icon.layout["icon-text-fit-padding"]) ?? []).map((v) => v * scale);
+  const em = clamp(num(text?.size, 14), 8, 22);
+  const px = (v: number) => `${Math.round(v * 100) / 100}px`;
+  const side = px(Math.max(right, left, em * 0.35));
+  const [above, below] = [px(Math.max(top, em * 0.12)), px(Math.max(bottom, em * 0.12))];
   textEl.classList.add(`${CLASS}-symbol-fitted`);
-  if (fit === "both" || fit === "width") textEl.style.padding = `${top}px ${right}px ${bottom}px ${left}px`;
-  else textEl.style.padding = `${top}px 0 ${bottom}px`;
+  textEl.style.padding = fit === "height" ? `${above} 0 ${below}` : `${above} ${side} ${below}`;
+  // the box is exactly the text: no wrapping cap, no shrinking — otherwise the
+  // stretched icon would end up smaller than the name it carries
+  textEl.style.width = "max-content";
+  textEl.style.maxWidth = "none";
   textEl.style.backgroundImage = `url(${drawn.canvas.toDataURL()})`;
   textEl.style.opacity = String(clamp(num(icon.paint["icon-opacity"], 1), 0, 1));
   return true;
@@ -628,7 +637,7 @@ export function createSymbolPreview(entry: { name?: string; text?: TextStyle; ic
   }
   // A shield: the icon is stretched behind the text, so it is not a picture of
   // its own. Where that cannot be drawn, the plain icon beside the text stands in.
-  const fitted = Boolean(entry.icon && textEl) && fitIconBehind(textEl!, entry.icon!, getImage);
+  const fitted = Boolean(entry.icon && textEl) && fitIconBehind(textEl!, entry.icon!, entry.text, getImage);
 
   const placement = textPlacement(entry.text);
   box.classList.add(`${CLASS}-symbol-${entry.icon && entry.name && !fitted ? placement : "single"}`);
