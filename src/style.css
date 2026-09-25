@@ -215,18 +215,13 @@
   height: var(--legend-control-swatch-height);
   overflow: hidden;
 }
+/* fills are polygons; a shadow halo may reach a little beyond the box, as a box-shadow would */
 .maplibre-legend-control .maplibre-legend-control-swatch-fill {
-  border-radius: var(--legend-control-radius-sm);
+  overflow: visible;
 }
-.maplibre-legend-control .maplibre-legend-control-pattern {
-  position: absolute;
-  inset: 0;
-  background-repeat: repeat;
-}
-.maplibre-legend-control .maplibre-legend-control-fill-borders {
-  position: absolute;
-  inset: 0;
+.maplibre-legend-control .maplibre-legend-control-swatch-fill svg {
   display: block;
+  overflow: visible;
 }
 .maplibre-legend-control .maplibre-legend-control-swatch-line svg {
   display: block;

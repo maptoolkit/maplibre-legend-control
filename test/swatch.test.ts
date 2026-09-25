@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { vi } from "vitest";
-import { createFillSwatch, createLineSwatch, createSymbolPreview, lineVariantFor, LINE_VARIANTS, textPlacement } from "../src/swatch";
+import {
+  createFillSwatch,
+  createLineSwatch,
+  createSymbolPreview,
+  fillShapeFamilyFor,
+  FILL_SHAPES,
+  lineVariantFor,
+  LINE_VARIANTS,
+  swatchVariantFor,
+  textPlacement,
+} from "../src/swatch";
 import type { TextStyle } from "../src/types";
 
 const cases: Array<[Partial<TextStyle> | undefined, ReturnType<typeof textPlacement>]> = [
@@ -130,18 +140,78 @@ describe("fill swatch borders", () => {
       layout: { "line-cap": "butt" },
     };
     const box = createFillSwatch(fill, undefined, [casing]);
-    expect(box.style.backgroundColor).toContain("170, 200, 230"); // jsdom normalises the colour string
-    const rect = box.querySelector("rect.maplibre-legend-control-border-casing") as SVGRectElement;
-    expect(rect).not.toBeNull();
-    expect(rect.getAttribute("stroke")).toBe("rgba(60,120,180,1)");
-    expect(rect.getAttribute("stroke-width")).toBe("2");
-    expect(rect.getAttribute("x")).toBe("1"); // inset by half the width
-    expect(rect.getAttribute("stroke-dasharray")).toBe("6 4"); // [3, 2] × width 2
+    const shape = box.querySelector("path.maplibre-legend-control-fill") as SVGPathElement;
+    expect(shape.getAttribute("fill")).toBe("rgba(170,200,230,1)");
+    expect(shape.getAttribute("fill-opacity")).toBe("0.8");
+    const border = box.querySelector("path.maplibre-legend-control-border-casing") as SVGPathElement;
+    expect(border).not.toBeNull();
+    expect(border.getAttribute("d")).toBe(shape.getAttribute("d")); // along the shape's own edge
+    expect(border.getAttribute("stroke")).toBe("rgba(60,120,180,1)");
+    expect(border.getAttribute("stroke-width")).toBe("4"); // twice the width, clipped to the shape → 2 px inside
+    expect(border.getAttribute("clip-path")).toMatch(/^url\(#.+-clip\)$/);
+    expect(border.getAttribute("stroke-dasharray")).toBe("6 4"); // [3, 2] × width 2
   });
 
-  it("has no border svg without line layers", () => {
+  it("has no border path without line layers", () => {
     const fill = { id: "f", type: "fill", role: "main", order: 0, paint: { "fill-color": "#abc" }, layout: {} };
-    expect(createFillSwatch(fill).querySelector("svg")).toBeNull();
+    expect(createFillSwatch(fill).querySelector(".maplibre-legend-control-border")).toBeNull();
+  });
+});
+
+describe("fill shapes", () => {
+  const fill = (id: string) => ({ id, type: "fill", role: "main", order: 0, paint: { "fill-color": "#abc" }, layout: {} });
+
+  it("picks the shape family from what the layer depicts", () => {
+    expect(fillShapeFamilyFor("building_footprint")).toBe("geometric");
+    expect(fillShapeFamilyFor("building_3d_multicolored")).toBe("geometric");
+    expect(fillShapeFamilyFor("nature_natural")).toBe("organic");
+    expect(fillShapeFamilyFor("water_area_inland")).toBe("organic");
+    expect(fillShapeFamilyFor("water_intermittent")).toBe("organic");
+    expect(fillShapeFamilyFor("nature_landuse")).toBe("regular");
+    expect(fillShapeFamilyFor("nature_pedestrian")).toBe("regular");
+  });
+
+  it("draws the variant's polygon of that family and marks the box with it", () => {
+    const shapes = FILL_SHAPES.geometric;
+    for (const variant of [0, 1, shapes.length, shapes.length + 2]) {
+      const box = createFillSwatch(fill("building_footprint"), undefined, [], variant);
+      expect(box.classList.contains("maplibre-legend-control-swatch-fill-geometric")).toBe(true);
+      expect(box.querySelector("path.maplibre-legend-control-fill")?.getAttribute("d")).toBe(shapes[variant % shapes.length]);
+    }
+    expect(createFillSwatch(fill("nature_natural"), undefined, [], 3).querySelector("path.maplibre-legend-control-fill")?.getAttribute("d")).toBe(
+      FILL_SHAPES.organic[3],
+    );
+  });
+
+  it("keeps every shape inside the box with its margin and every family distinct", () => {
+    for (const shapes of Object.values(FILL_SHAPES)) {
+      expect(new Set(shapes).size).toBe(shapes.length);
+      for (const d of shapes) {
+        expect(d.trim().endsWith("Z")).toBe(true);
+        // every coordinate inside the 64×26 box minus the 2 px margin (H carries x only, V y only)
+        for (const segment of d.matchAll(/([MLCHV])([^MLCHVZ]*)/g)) {
+          const [, command, coords] = segment;
+          const numbers = coords
+            .trim()
+            .split(/[\s,]+/)
+            .filter(Boolean)
+            .map(Number);
+          numbers.forEach((n, i) => {
+            const isX = command === "H" || (command !== "V" && i % 2 === 0);
+            expect(n).toBeGreaterThanOrEqual(2);
+            expect(n).toBeLessThanOrEqual(isX ? 62 : 24);
+          });
+        }
+      }
+    }
+    expect(FILL_SHAPES.geometric.every((d) => !/[CLQ]/.test(d))).toBe(true); // orthogonal: only H/V edges
+    expect(FILL_SHAPES.regular.every((d) => !/[CQ]/.test(d))).toBe(true); // straight edges
+    expect(FILL_SHAPES.organic.every((d) => /C/.test(d))).toBe(true); // curves
+  });
+
+  it("uses one stable variant per key for lines and fills alike", () => {
+    expect(swatchVariantFor("road:motorway")).toBe(swatchVariantFor("road:motorway"));
+    expect(lineVariantFor("road:motorway")).toBe(swatchVariantFor("road:motorway") % LINE_VARIANTS);
   });
 });
 
@@ -181,8 +251,17 @@ describe("fill swatch shadows", () => {
       layout: { "line-cap": "butt" },
     };
     const box = createFillSwatch(fill, undefined, [shadow]);
-    expect(box.querySelector("rect")).toBeNull(); // no crisp border
-    expect(box.style.boxShadow).toContain("inset 0 0 0 1px"); // the outline hairline stays
-    expect(box.style.boxShadow).toContain("0 0 8px 4px rgba(60,50,40,0.3)"); // half width as spread, blur capped, faded
+    expect(box.querySelector(".maplibre-legend-control-border")).toBeNull(); // no crisp border
+    const outline = box.querySelector("path.maplibre-legend-control-fill-outline") as SVGPathElement; // the hairline stays, inside the shape
+    expect(outline.getAttribute("stroke")).toBe("rgba(200,200,200,1)");
+    expect(outline.getAttribute("clip-path")).toMatch(/^url\(#/);
+    const halo = box.querySelector("path.maplibre-legend-control-fill-halo-shadow") as SVGPathElement;
+    expect(halo.getAttribute("stroke")).toBe("rgba(60,50,40,1)");
+    expect(halo.getAttribute("stroke-opacity")).toBe("0.3"); // as faint as the layer
+    expect(halo.getAttribute("stroke-width")).toBe("8"); // width capped
+    expect(halo.style.filter).toBe("blur(4px)"); // blur capped
+    // below the fill: only the outer half shows beside the shape
+    const shape = box.querySelector("path.maplibre-legend-control-fill") as SVGPathElement;
+    expect(halo.compareDocumentPosition(shape) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

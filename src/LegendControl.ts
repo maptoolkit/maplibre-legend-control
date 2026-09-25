@@ -1,6 +1,6 @@
 import type { Map, IControl, ControlPosition } from "maplibre-gl";
 import { buildLegendModel, featureIdentity, valueToString } from "./model";
-import { createSwatch, createSymbolPreview, lineVariantFor, type GetImage } from "./swatch";
+import { createSwatch, createSymbolPreview, swatchVariantFor, type GetImage } from "./swatch";
 import { LEGEND_METADATA_KEY, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
 /**
@@ -400,7 +400,9 @@ export class LegendControl implements IControl {
         // (a peak keeps its elevation left-aligned under the name).
         const visual = document.createElement("span");
         visual.classList.add(`${CLASS}-visual`);
-        visual.appendChild(entry.kind === "instance" ? createSymbolPreview(entry, getImage) : createSwatch(entry.swatch, getImage, lineVariantFor(entry.key)));
+        visual.appendChild(
+          entry.kind === "instance" ? createSymbolPreview(entry, getImage) : createSwatch(entry.swatch, getImage, swatchVariantFor(entry.key)),
+        );
         li.appendChild(visual);
 
         const label = document.createElement("span");

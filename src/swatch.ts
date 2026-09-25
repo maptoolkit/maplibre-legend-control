@@ -38,13 +38,6 @@ function parseColor(color: string): [number, number, number, number] | undefined
   return [r, g, b, a / 255];
 }
 
-/** The colour with its alpha multiplied by `opacity`; the input is returned unchanged when it cannot be parsed. */
-function withAlpha(color: string, opacity: number): string {
-  if (opacity >= 1) return color;
-  const rgba = parseColor(color);
-  return rgba ? `rgba(${rgba[0]},${rgba[1]},${rgba[2]},${Math.round(rgba[3] * opacity * 1000) / 1000})` : color;
-}
-
 /** Draw a style image (plain or SDF, recolored) onto a canvas; `undefined` when the environment has no 2D canvas. */
 function imageToCanvas(image: StyleImageLike, options: { color?: string; haloColor?: string; haloWidth?: number } = {}): HTMLCanvasElement | undefined {
   const { width, height, data } = image.data;
@@ -225,80 +218,166 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
   return box;
 }
 
+/** How a fill swatch is shaped — by what the layer depicts. */
+export type FillShapeFamily = "organic" | "regular" | "geometric";
+
 /**
- * Filled box: fill colour and opacity, sprite pattern when the image is
- * available, `fill-outline-color` as a hairline, and every line layer of the
- * stack (casing, outline, band …) drawn as a border around the box with its
- * colour, width, opacity and dash pattern — an intermittent lake keeps its
- * dashed shoreline.
+ * Polygon shapes for fill swatches, per family, in the 64×26 box with a 2px
+ * margin. Like the line bends, one is picked per entry (see
+ * {@link swatchVariantFor}). Organic: smooth, gently wavy outlines that still
+ * tend to the rectangle (natural areas, waters). Regular: straight-edged
+ * parcels with a clipped corner or a bend (landuse). Geometric: orthogonal
+ * building footprints.
  */
-export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, supporting: SwatchLayer[] = []): HTMLElement {
-  const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-fill`);
+export const FILL_SHAPES: Readonly<Record<FillShapeFamily, readonly string[]>> = {
+  organic: [
+    "M 6 4 C 22 2, 42 2, 58 4 C 62 9, 62 17, 58 22 C 42 24, 22 24, 6 22 C 2 17, 2 9, 6 4 Z",
+    "M 4 8 C 8 3, 26 2, 40 4 C 50 2, 62 5, 61 12 C 62 19, 52 24, 40 22 C 28 24, 12 24, 5 21 C 2 18, 2 12, 4 8 Z",
+    "M 8 3 C 22 4, 38 2, 54 3 C 62 6, 62 16, 58 22 C 46 24, 30 22, 14 24 C 6 23, 2 18, 3 12 C 3 7, 4 3, 8 3 Z",
+    "M 5 6 C 12 3, 22 6, 32 4 C 44 2, 56 3, 60 7 C 62 13, 60 20, 54 23 C 42 24, 30 21, 18 23 C 10 24, 3 21, 3 15 C 3 11, 3 8, 5 6 Z",
+    "M 7 4 C 18 2, 34 5, 48 3 C 58 2, 62 8, 61 14 C 62 19, 58 24, 50 23 C 36 24, 22 22, 10 23 C 4 23, 2 18, 3 13 C 2 8, 3 5, 7 4 Z",
+  ],
+  regular: [
+    "M 2 3 H 58 L 62 24 H 6 Z",
+    "M 2 2 H 54 L 62 10 V 24 H 2 Z",
+    "M 5 2 H 62 L 58 24 H 2 Z",
+    "M 2 6 L 22 2 H 62 V 20 L 42 24 H 2 Z",
+    "M 2 2 H 46 L 62 9 V 24 H 10 L 2 17 Z",
+  ],
+  geometric: [
+    "M 2 2 H 62 V 24 H 2 Z",
+    "M 2 2 H 40 V 12 H 62 V 24 H 2 Z",
+    "M 2 2 H 62 V 24 H 44 V 15 H 20 V 24 H 2 Z",
+    "M 2 2 H 50 V 8 H 62 V 24 H 2 Z",
+    "M 2 9 H 16 V 2 H 48 V 9 H 62 V 24 H 2 Z",
+  ],
+};
+
+/**
+ * The shape family of a fill layer, from its id: buildings are geometric,
+ * natural areas and waters organic, landuse and everything else man-made
+ * (pedestrian areas, …) regular.
+ */
+export function fillShapeFamilyFor(layerId: string): FillShapeFamily {
+  if (layerId.startsWith("building")) return "geometric";
+  if (layerId.startsWith("nature_natural") || layerId.startsWith("water")) return "organic";
+  return "regular";
+}
+
+let fillSeq = 0;
+
+function shapePath(d: string, className: string): SVGElement {
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("class", className);
+  path.setAttribute("d", d);
+  return path;
+}
+
+/**
+ * A polygon of the layer's shape family (see {@link FILL_SHAPES}), filled
+ * with the colour and opacity and with the sprite patterns of the stack;
+ * `fill-outline-color` as a hairline and every crisp line layer of the stack
+ * (casing, outline, band …) as an inner border with its colour, width, opacity
+ * and dash pattern — an intermittent lake keeps its dashed shoreline. Shadow
+ * and other blurred strokes lie below the fill as a soft halo along the edge,
+ * as on the map.
+ */
+export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, supporting: SwatchLayer[] = [], variant = 0): HTMLElement {
+  const family = fillShapeFamilyFor(layer.id);
+  const shapes = FILL_SHAPES[family];
+  const d = shapes[Math.abs(Math.trunc(variant)) % shapes.length];
+  const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-fill ${CLASS}-swatch-fill-${family}`);
   const isExtrusion = layer.type === "fill-extrusion";
   const color = valueToString(layer.paint[isExtrusion ? "fill-extrusion-color" : "fill-color"]);
   const opacity = clamp(num(layer.paint[isExtrusion ? "fill-extrusion-opacity" : "fill-opacity"], 1), 0, 1);
   const outline = valueToString(layer.paint["fill-outline-color"]);
-  if (color) box.style.backgroundColor = color;
-  box.style.opacity = String(opacity);
-  const shadows: string[] = [];
-  if (outline) shadows.push(`inset 0 0 0 1px ${outline}`);
 
-  for (const tex of [layer, ...supporting.filter((l) => l.type === "fill")]) {
-    const pattern = valueToString(tex.paint["fill-pattern"]);
-    const image = pattern && getImage ? getImage(pattern) : undefined;
-    const canvas = image ? imageToCanvas(image) : undefined;
-    if (canvas) {
-      const ratio = image!.pixelRatio || 1;
-      const p = el("span", `${CLASS}-pattern`);
-      p.style.backgroundImage = `url(${canvas.toDataURL()})`;
-      p.style.backgroundSize = `${canvas.width / ratio}px ${canvas.height / ratio}px`;
-      p.style.opacity = String(clamp(num(tex.paint["fill-opacity"], 1), 0, 1));
-      box.appendChild(p);
-    }
-  }
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${SWATCH_W} ${SWATCH_H}`);
+  svg.setAttribute("width", String(SWATCH_W));
+  svg.setAttribute("height", String(SWATCH_H));
+  svg.setAttribute("aria-hidden", "true");
+  const defs = document.createElementNS(SVG_NS, "defs");
+  svg.appendChild(defs);
+  const id = `${CLASS}-fill-${++fillSeq}`;
+  const clip = document.createElementNS(SVG_NS, "clipPath");
+  clip.setAttribute("id", `${id}-clip`);
+  clip.appendChild(shapePath(d, `${CLASS}-fill-clip`));
+  defs.appendChild(clip);
 
   const strokes = supporting.map(strokeOf).filter((st): st is Stroke => Boolean(st));
-  // Shadows and other blurred strokes are soft halos along the edge (the map
-  // draws them below the fill, so only the outer half shows): a box-shadow of
-  // half the width, blurred and faded like the layer — not a crisp frame.
+  // Shadows and other blurred strokes go below the fill: the outer half shows
+  // beside the shape as a soft, faded halo — never a crisp frame.
   const halos = strokes.filter((st) => st.role === "shadow" || st.blur > 0);
   for (const st of halos) {
-    const spread = Math.min(4, st.width / 2);
-    const blur = Math.min(8, Math.max(st.blur, spread));
-    shadows.push(`0 0 ${blur}px ${spread}px ${withAlpha(st.color, st.opacity)}`);
+    const path = shapePath(d, `${CLASS}-fill-halo ${CLASS}-fill-halo-${st.role}`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", st.color);
+    path.setAttribute("stroke-width", String(Math.min(st.width, 8)));
+    if (st.opacity < 1) path.setAttribute("stroke-opacity", String(st.opacity));
+    path.style.filter = `blur(${Math.min(Math.max(st.blur, 1), 4)}px)`;
+    svg.appendChild(path);
   }
-  if (shadows.length) box.style.boxShadow = shadows.join(", ");
 
-  const borders = strokes.filter((st) => !halos.includes(st));
-  if (borders.length) {
-    const svg = document.createElementNS(SVG_NS, "svg");
-    svg.setAttribute("class", `${CLASS}-fill-borders`);
-    svg.setAttribute("viewBox", `0 0 ${SWATCH_W} ${SWATCH_H}`);
-    svg.setAttribute("width", String(SWATCH_W));
-    svg.setAttribute("height", String(SWATCH_H));
-    svg.setAttribute("aria-hidden", "true");
-    for (const border of borders) {
-      // the stroke sits inside the box: inset by half its width, capped at a third of the height
-      const width = Math.min(border.width, SWATCH_H / 3);
-      const rect = document.createElementNS(SVG_NS, "rect");
-      rect.setAttribute("class", `${CLASS}-border ${CLASS}-border-${border.role}`);
-      rect.setAttribute("x", String(width / 2));
-      rect.setAttribute("y", String(width / 2));
-      rect.setAttribute("width", String(SWATCH_W - width));
-      rect.setAttribute("height", String(SWATCH_H - width));
-      rect.setAttribute("fill", "none");
-      rect.setAttribute("stroke", border.color);
-      rect.setAttribute("stroke-width", String(width));
-      rect.setAttribute("stroke-linejoin", "miter");
-      if (border.opacity < 1) rect.setAttribute("stroke-opacity", String(border.opacity));
-      if (border.dash) {
-        const k = width / border.width; // dash lengths follow the (possibly capped) width
-        rect.setAttribute("stroke-dasharray", border.dash.map((d) => Math.round(Math.max(0.5, d * k) * 100) / 100).join(" "));
-      }
-      svg.appendChild(rect);
-    }
-    box.appendChild(svg);
+  const fill = shapePath(d, `${CLASS}-fill`);
+  fill.setAttribute("fill", color ?? "none");
+  if (opacity < 1) fill.setAttribute("fill-opacity", String(opacity));
+  svg.appendChild(fill);
+
+  // sprite patterns of the layer and its texture layers, tiled at their CSS size
+  let patterns = 0;
+  for (const tex of [layer, ...supporting.filter((l) => l.type === "fill")]) {
+    const name = valueToString(tex.paint["fill-pattern"]);
+    const image = name && getImage ? getImage(name) : undefined;
+    const canvas = image ? imageToCanvas(image) : undefined;
+    if (!canvas) continue;
+    const ratio = image!.pixelRatio || 1;
+    const w = canvas.width / ratio;
+    const h = canvas.height / ratio;
+    const pattern = document.createElementNS(SVG_NS, "pattern");
+    pattern.setAttribute("id", `${id}-pattern-${++patterns}`);
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    pattern.setAttribute("width", String(w));
+    pattern.setAttribute("height", String(h));
+    const img = document.createElementNS(SVG_NS, "image");
+    img.setAttribute("href", canvas.toDataURL());
+    img.setAttribute("width", String(w));
+    img.setAttribute("height", String(h));
+    pattern.appendChild(img);
+    defs.appendChild(pattern);
+    const p = shapePath(d, `${CLASS}-pattern`);
+    p.setAttribute("fill", `url(#${id}-pattern-${patterns})`);
+    const texOpacity = clamp(num(tex.paint["fill-opacity"], 1), 0, 1);
+    if (texOpacity < 1) p.setAttribute("fill-opacity", String(texOpacity));
+    svg.appendChild(p);
   }
+
+  // hairline and crisp line layers as an inner border: a stroke of twice the
+  // width clipped to the shape shows exactly the width, entirely inside
+  if (outline) {
+    const path = shapePath(d, `${CLASS}-fill-outline`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", outline);
+    path.setAttribute("stroke-width", "2");
+    path.setAttribute("clip-path", `url(#${id}-clip)`);
+    svg.appendChild(path);
+  }
+  for (const border of strokes.filter((st) => !halos.includes(st))) {
+    const width = Math.min(border.width, SWATCH_H / 3); // capped at a third of the height
+    const path = shapePath(d, `${CLASS}-border ${CLASS}-border-${border.role}`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", border.color);
+    path.setAttribute("stroke-width", String(width * 2));
+    path.setAttribute("stroke-linejoin", "miter");
+    path.setAttribute("clip-path", `url(#${id}-clip)`);
+    if (border.opacity < 1) path.setAttribute("stroke-opacity", String(border.opacity));
+    if (border.dash) {
+      const k = width / border.width; // dash lengths follow the (possibly capped) width
+      path.setAttribute("stroke-dasharray", border.dash.map((v) => Math.round(Math.max(0.5, v * k) * 100) / 100).join(" "));
+    }
+    svg.appendChild(path);
+  }
+  box.appendChild(svg);
   return box;
 }
 
@@ -334,13 +413,19 @@ export function createIconSwatch(layer: SwatchLayer, getImage?: GetImage): HTMLE
 export const LINE_VARIANTS = LINE_PATHS.length;
 
 /**
- * Stable pseudo-random curve variant for an entry key, so a legend row keeps
- * its bend across updates while neighbouring rows differ.
+ * Stable pseudo-random variant for an entry key (FNV-1a hash), so a legend row
+ * keeps its line bend or polygon shape across updates while neighbouring rows
+ * differ. The swatch builders reduce it modulo their number of shapes.
  */
-export function lineVariantFor(key: string): number {
-  let h = 2166136261; // FNV-1a
+export function swatchVariantFor(key: string): number {
+  let h = 2166136261;
   for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
-  return (h >>> 0) % LINE_PATHS.length;
+  return h >>> 0;
+}
+
+/** The curve index {@link swatchVariantFor} selects for a key. */
+export function lineVariantFor(key: string): number {
+  return swatchVariantFor(key) % LINE_PATHS.length;
 }
 
 /** Pick the swatch shape from the entry's main layer type and hand the stack to the matching builder. */
@@ -356,6 +441,7 @@ export function createSwatch(layers: SwatchLayer[], getImage?: GetImage, variant
         main,
         getImage,
         layers.filter((l) => l !== main),
+        variant,
       );
     case "symbol":
       return createIconSwatch(main, getImage);

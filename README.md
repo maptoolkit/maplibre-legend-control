@@ -78,12 +78,17 @@ evaluated paint and layout, and builds:
   together when too wide; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the
-  hiking band together with the path it runs on. Fills carry their sprite
-  pattern and the crisp line layers of their stack as a border (an intermittent
-  lake keeps its dashed shoreline), while shadow and other blurred strokes
-  become a soft halo along the edge, as faint as on the map (a building's
-  shadow does not frame it). SDF sprite icons are recoloured with their
-  `icon-color`;
+  hiking band together with the path it runs on. Fills are polygons in one of
+  three shape families, picked by what the layer depicts — smooth, gently wavy
+  outlines that still tend to the rectangle for natural areas and waters,
+  straight-edged parcels for landuse, orthogonal footprints for buildings —
+  one of a few shapes per family, chosen per entry like the line bends. They
+  carry the colour, the sprite patterns of their stack, `fill-outline-color` as
+  a hairline and the crisp line layers as an inner border along the shape (an
+  intermittent lake keeps its dashed shoreline), while shadow and other blurred
+  strokes lie below as a soft halo along the edge, as faint as on the map (a
+  building's shadow does not frame it). SDF sprite icons are recoloured with
+  their `icon-color`;
 - **instance entries** — for standalone label layers (places, waters, POIs) one
   entry per type, showing the most prominent feature among those whose label
   lies entirely inside the map minus a 5 % edge buffer (lowest rank, then the
