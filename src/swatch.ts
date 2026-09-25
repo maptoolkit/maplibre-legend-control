@@ -88,10 +88,12 @@ function imageToCanvas(image: StyleImageLike, options: { color?: string; haloCol
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 /**
- * Gentle curves through the 64×26 swatch box, so a road reads as a road. One
- * of them is picked per entry (see {@link lineVariantFor}) — different entries
- * get different bends, an entry keeps its bend across updates. The curves run
- * edge to edge; with butt caps the strokes end flush like a map cut-out.
+ * Ten curves through the 64×26 swatch box, so a road reads as a road: gentle
+ * bends, arches and sags, plus two odd ones — a serpentine and a road that
+ * jogs sideways. One of them is picked per entry (see {@link lineVariantFor}) —
+ * different entries get different bends, an entry keeps its bend across
+ * updates. The curves run edge to edge; with butt caps the strokes end flush
+ * like a map cut-out.
  */
 const LINE_PATHS = [
   "M 2 17 C 17.6 8, 34.4 18, 62 9",
@@ -99,6 +101,11 @@ const LINE_PATHS = [
   "M 2 14 C 12.8 8, 24.8 8, 34.4 13 S 53.6 18, 62 12",
   "M 2 18 C 20 18, 34.4 8, 62 9",
   "M 2 8 C 12.8 18, 41.6 18, 62 17",
+  "M 2 15 C 22 14, 42 12, 62 11",
+  "M 2 17 C 18 8, 46 8, 62 17",
+  "M 2 9 C 18 18, 46 18, 62 9",
+  "M 2 12 C 10 8, 16 18, 24 13 C 32 8, 40 18, 48 13 C 54 9, 58 16, 62 12", // serpentine
+  "M 2 17 H 22 C 30 17, 34 9, 42 9 H 62", // a road jogging sideways
 ];
 /** Vertical extent of the curves above (all stay within y = 8…18). */
 const PATH_EXTENT = 10;
@@ -223,7 +230,7 @@ export type FillShapeFamily = "organic" | "regular" | "geometric";
 
 /**
  * Polygon shapes for fill swatches, per family, in the 64×26 box with a 2px
- * margin. Like the line bends, one is picked per entry (see
+ * margin, ten per family. Like the line bends, one is picked per entry (see
  * {@link swatchVariantFor}). Organic: smooth, gently wavy outlines that still
  * tend to the rectangle (natural areas, waters). Regular: straight-edged
  * parcels with a clipped corner or a bend (landuse). Geometric: orthogonal
@@ -236,6 +243,11 @@ export const FILL_SHAPES: Readonly<Record<FillShapeFamily, readonly string[]>> =
     "M 8 3 C 22 4, 38 2, 54 3 C 62 6, 62 16, 58 22 C 46 24, 30 22, 14 24 C 6 23, 2 18, 3 12 C 3 7, 4 3, 8 3 Z",
     "M 5 6 C 12 3, 22 6, 32 4 C 44 2, 56 3, 60 7 C 62 13, 60 20, 54 23 C 42 24, 30 21, 18 23 C 10 24, 3 21, 3 15 C 3 11, 3 8, 5 6 Z",
     "M 7 4 C 18 2, 34 5, 48 3 C 58 2, 62 8, 61 14 C 62 19, 58 24, 50 23 C 36 24, 22 22, 10 23 C 4 23, 2 18, 3 13 C 2 8, 3 5, 7 4 Z",
+    "M 5 5 C 16 3, 30 6, 44 3 C 54 2, 62 6, 61 12 C 60 18, 62 22, 52 23 C 38 24, 24 22, 12 24 C 5 24, 2 19, 3 13 C 3 9, 3 6, 5 5 Z",
+    "M 9 3 C 26 2, 44 3, 58 2 C 62 8, 62 14, 60 20 C 56 24, 40 23, 26 24 C 14 24, 6 23, 3 20 C 2 14, 3 8, 9 3 Z",
+    "M 4 6 C 12 2, 26 3, 36 5 C 48 7, 58 2, 61 8 C 62 14, 58 18, 59 22 C 46 24, 34 23, 22 24 C 12 24, 3 22, 3 17 C 2 12, 2 8, 4 6 Z",
+    "M 6 3 C 20 3, 36 6, 52 3 C 60 2, 62 10, 61 16 C 60 21, 56 24, 46 23 C 32 22, 18 24, 8 23 C 3 22, 2 16, 4 11 C 4 7, 4 4, 6 3 Z",
+    "M 3 9 C 6 3, 18 2, 30 3 C 42 4, 52 2, 60 5 C 62 11, 60 16, 61 21 C 52 24, 40 22, 28 23 C 16 24, 6 24, 3 19 C 2 15, 2 12, 3 9 Z",
   ],
   regular: [
     "M 2 3 H 58 L 62 24 H 6 Z",
@@ -243,6 +255,11 @@ export const FILL_SHAPES: Readonly<Record<FillShapeFamily, readonly string[]>> =
     "M 5 2 H 62 L 58 24 H 2 Z",
     "M 2 6 L 22 2 H 62 V 20 L 42 24 H 2 Z",
     "M 2 2 H 46 L 62 9 V 24 H 10 L 2 17 Z",
+    "M 2 2 H 62 V 18 L 50 24 H 2 Z",
+    "M 8 2 H 62 V 24 H 2 V 8 Z",
+    "M 2 2 H 44 L 62 4 V 24 H 2 Z",
+    "M 2 4 L 62 2 V 22 L 2 24 Z",
+    "M 2 2 H 62 V 14 L 40 24 H 2 Z",
   ],
   geometric: [
     "M 2 2 H 62 V 24 H 2 Z",
@@ -250,6 +267,11 @@ export const FILL_SHAPES: Readonly<Record<FillShapeFamily, readonly string[]>> =
     "M 2 2 H 62 V 24 H 44 V 15 H 20 V 24 H 2 Z",
     "M 2 2 H 50 V 8 H 62 V 24 H 2 Z",
     "M 2 9 H 16 V 2 H 48 V 9 H 62 V 24 H 2 Z",
+    "M 2 2 H 34 V 8 H 62 V 24 H 2 Z",
+    "M 2 2 H 62 V 16 H 40 V 24 H 2 Z",
+    "M 2 8 H 12 V 2 H 62 V 24 H 2 Z",
+    "M 2 2 H 62 V 24 H 50 V 18 H 14 V 24 H 2 Z",
+    "M 2 2 H 24 V 10 H 40 V 2 H 62 V 24 H 2 Z",
   ],
 };
 

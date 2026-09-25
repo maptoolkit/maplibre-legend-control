@@ -73,8 +73,9 @@ evaluated paint and layout, and builds:
   border …), with a swatch stacked from the layer and its casing/blur/texture
   layers using the evaluated colours, widths, gaps and dash patterns at the
   current zoom (a casing's gap is masked out, not painted, so a translucent
-  road still shows the route band beneath it). Lines are drawn as a curved SVG stroke stack — one of a few
-  bends, chosen per entry so rows differ but stay put across updates — scaled
+  road still shows the route band beneath it). Lines are drawn as a curved SVG stroke stack — one of ten
+  bends (gentle curves, arches, sags, a serpentine, a sideways jog), chosen per
+  entry so rows differ but stay put across updates — scaled
   together when too wide; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the
@@ -82,7 +83,7 @@ evaluated paint and layout, and builds:
   three shape families, picked by what the layer depicts — smooth, gently wavy
   outlines that still tend to the rectangle for natural areas and waters,
   straight-edged parcels for landuse, orthogonal footprints for buildings —
-  one of a few shapes per family, chosen per entry like the line bends. They
+  one of ten shapes per family, chosen per entry like the line bends. They
   carry the colour, the sprite patterns of their stack, `fill-outline-color` as
   a hairline and the crisp line layers as an inner border along the shape (an
   intermittent lake keeps its dashed shoreline), while shadow and other blurred

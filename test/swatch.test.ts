@@ -183,6 +183,11 @@ describe("fill shapes", () => {
     );
   });
 
+  it("offers ten shapes per family and ten line bends", () => {
+    expect(LINE_VARIANTS).toBe(10);
+    for (const shapes of Object.values(FILL_SHAPES)) expect(shapes).toHaveLength(10);
+  });
+
   it("keeps every shape inside the box with its margin and every family distinct", () => {
     for (const shapes of Object.values(FILL_SHAPES)) {
       expect(new Set(shapes).size).toBe(shapes.length);
