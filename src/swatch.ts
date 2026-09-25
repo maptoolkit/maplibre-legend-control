@@ -7,6 +7,12 @@ export type StyleImageLike = {
   data: { width: number; height: number; data: Uint8Array | Uint8ClampedArray };
   pixelRatio: number;
   sdf: boolean;
+  /**
+   * 9-slice metadata of a stretchable sprite (a shield): `content` is the area
+   * the text sits in, in image pixels — everything outside it is the frame that
+   * keeps its size when the icon is fitted to a text.
+   */
+  content?: [number, number, number, number];
 };
 export type GetImage = (id: string) => StyleImageLike | undefined | null;
 
@@ -477,7 +483,7 @@ export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, suppor
 
 /** Sprite icon, SDF icons recolored with icon-color (+ halo); falls back to a neutral dot without image/canvas. */
 /** The layer's sprite icon as a canvas, recoloured like the map draws it (SDF colour + halo). */
-function iconCanvasOf(layer: SwatchLayer, getImage?: GetImage): { canvas: HTMLCanvasElement; ratio: number } | undefined {
+function iconCanvasOf(layer: SwatchLayer, getImage?: GetImage): { canvas: HTMLCanvasElement; ratio: number; image: StyleImageLike } | undefined {
   const name = valueToString(layer.layout["icon-image"]);
   const image = name && getImage ? getImage(name) : undefined;
   const canvas = image
@@ -487,7 +493,7 @@ function iconCanvasOf(layer: SwatchLayer, getImage?: GetImage): { canvas: HTMLCa
         haloWidth: num(layer.paint["icon-halo-width"], 0),
       })
     : undefined;
-  return canvas && image ? { canvas, ratio: image.pixelRatio || 1 } : undefined;
+  return canvas && image ? { canvas, ratio: image.pixelRatio || 1, image } : undefined;
 }
 
 export function createIconSwatch(layer: SwatchLayer, getImage?: GetImage): HTMLElement {
@@ -607,21 +613,40 @@ function fitIconBehind(textEl: HTMLElement, icon: SwatchLayer, text?: TextStyle,
   // without a drawable canvas the caller falls back to the plain icon
   const drawn = iconCanvasOf(icon, getImage);
   if (!drawn) return false;
+
   const scale = num(icon.layout["icon-size"], 1);
-  // MapLibre pads the fitted icon by at least a little; without a readable
-  // padding the shield would hug the glyphs (a one-character ref needs air).
   const [top = 0, right = 0, bottom = 0, left = 0] = (valueToNumbers(icon.layout["icon-text-fit-padding"]) ?? []).map((v) => v * scale);
-  const em = clamp(num(text?.size, 14), 8, 22);
+  const content = drawn.image.content;
   const px = (v: number) => `${Math.round(v * 100) / 100}px`;
-  const side = px(Math.max(right, left, em * 0.35));
-  const [above, below] = [px(Math.max(top, em * 0.12)), px(Math.max(bottom, em * 0.12))];
+
   textEl.classList.add(`${CLASS}-symbol-fitted`);
-  textEl.style.padding = fit === "height" ? `${above} 0 ${below}` : `${above} ${side} ${below}`;
+  if (content) {
+    // A stretchable sprite: only the middle grows, the frame around `content`
+    // keeps its size — exactly what border-image does. The frame is drawn
+    // outside the padding, so the text keeps the room the style gives it.
+    const { width, height } = drawn.image.data;
+    const r = drawn.ratio || 1;
+    const slice = [content[1], width - content[2], height - content[3], content[0]]; // top right bottom left, image px
+    textEl.style.padding = fit === "height" ? `${px(top)} 0 ${px(bottom)}` : `${px(top)} ${px(right)} ${px(bottom)} ${px(left)}`;
+    textEl.style.borderStyle = "solid";
+    textEl.style.borderColor = "transparent";
+    textEl.style.borderWidth = slice.map((v) => px((v * scale) / r)).join(" ");
+    textEl.style.borderImageSource = `url(${drawn.canvas.toDataURL()})`;
+    textEl.style.borderImageSlice = `${slice.join(" ")} fill`;
+    textEl.style.borderImageWidth = slice.map((v) => px((v * scale) / r)).join(" ");
+  } else {
+    // A plain icon: stretch the whole image, and give a short ref some air of
+    // its own — without a frame the shape would otherwise hug the glyphs.
+    const em = clamp(num(text?.size, 14), 8, 22);
+    const side = px(Math.max(right, left, em * 0.35));
+    const [above, below] = [px(Math.max(top, em * 0.12)), px(Math.max(bottom, em * 0.12))];
+    textEl.style.padding = fit === "height" ? `${above} 0 ${below}` : `${above} ${side} ${below}`;
+    textEl.style.backgroundImage = `url(${drawn.canvas.toDataURL()})`;
+  }
   // the box is exactly the text: no wrapping cap, no shrinking — otherwise the
-  // stretched icon would end up smaller than the name it carries
+  // icon would end up smaller than the name it carries
   textEl.style.width = "max-content";
   textEl.style.maxWidth = "none";
-  textEl.style.backgroundImage = `url(${drawn.canvas.toDataURL()})`;
   textEl.style.opacity = String(clamp(num(icon.paint["icon-opacity"], 1), 0, 1));
   return true;
 }

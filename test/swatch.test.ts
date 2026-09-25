@@ -295,6 +295,17 @@ describe("shields (icon-text-fit)", () => {
     expect(text.style.padding).toBe("2.4px 7px"); // 12 % of the size top/bottom, 35 % at the sides
   });
 
+  it("keeps a stretchable sprite's frame and grows only its middle", () => {
+    // the shield sprite is 9-sliced: content [4,4,21,21] of 25×25, so a 4 px frame all round
+    const sliced = { ...image, data: { ...image.data, width: 25, height: 25 }, content: [4, 4, 21, 21] as [number, number, number, number] };
+    const box = createSymbolPreview({ name: "18-2", text: { fontStack: ["Rosario Bold"], size: 12 }, icon: shield }, () => sliced);
+    const text = box.querySelector(".maplibre-legend-control-symbol-text") as HTMLElement;
+    expect(text.style.borderImageSlice).toBe("4 4 4 4 fill"); // top right bottom left, in image pixels
+    expect(text.style.borderWidth).toBe("4px"); // the frame keeps its size, only the middle stretches
+    expect(text.style.padding).toBe("2px 5px 4px"); // the style's own fit padding, untouched by any floor
+    expect(text.style.backgroundImage).toBe(""); // border-image carries it, not a stretched background
+  });
+
   it("stretches the icon behind the text and pads it, instead of drawing a picture beside it", () => {
     const box = createSymbolPreview({ name: "A22", text: { fontStack: ["Rosario Bold"], size: 12 }, icon: shield }, () => image);
     const text = box.querySelector(".maplibre-legend-control-symbol-text") as HTMLElement;
