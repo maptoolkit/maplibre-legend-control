@@ -87,26 +87,72 @@ function imageToCanvas(image: StyleImageLike, options: { color?: string; haloCol
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+/** Line shape family — how the feature runs on the map. */
+export type LineShapeFamily = "geometric" | "flat" | "medium" | "tight";
+
 /**
- * Ten curves through the 64×26 swatch box, so a road reads as a road: gentle
- * bends, arches and sags, plus two odd ones — a serpentine and a road that
- * jogs sideways. One of them is picked per entry (see {@link lineVariantFor}) —
+ * Curves through the 64×26 swatch box, so a road reads as a road, by family:
+ * `geometric` runs straight with sharp bends (aerial lifts), `flat` bends
+ * gently (major roads, railways, ferries, admin borders), `medium` is wavier
+ * (minor roads, pistes, cycle routes, waterways) and `tight` winds (paths,
+ * contours). One of them is picked per entry from {@link swatchVariantFor} —
  * different entries get different bends, an entry keeps its bend across
- * updates. The curves run edge to edge; with butt caps the strokes end flush
- * like a map cut-out.
+ * updates. All run edge to edge and stay within y = 8…18; with butt caps the
+ * strokes end flush like a map cut-out.
  */
-const LINE_PATHS = [
-  "M 2 17 C 17.6 8, 34.4 18, 62 9",
-  "M 2 9 C 20 18, 39.2 8, 62 17",
-  "M 2 14 C 12.8 8, 24.8 8, 34.4 13 S 53.6 18, 62 12",
-  "M 2 18 C 20 18, 34.4 8, 62 9",
-  "M 2 8 C 12.8 18, 41.6 18, 62 17",
-  "M 2 15 C 22 14, 42 12, 62 11",
-  "M 2 17 C 18 8, 46 8, 62 17",
-  "M 2 9 C 18 18, 46 18, 62 9",
-  "M 2 12 C 10 8, 16 18, 24 13 C 32 8, 40 18, 48 13 C 54 9, 58 16, 62 12", // serpentine
-  "M 2 17 H 22 C 30 17, 34 9, 42 9 H 62", // a road jogging sideways
-];
+export const LINE_SHAPES: Readonly<Record<LineShapeFamily, readonly string[]>> = {
+  geometric: ["M 2 13 H 62", "M 2 17 L 62 9", "M 2 9 L 32 17 L 62 10", "M 2 17 L 30 9 L 62 15", "M 2 16 L 20 16 L 34 9 L 62 9"],
+  flat: [
+    "M 2 15 C 20 13, 44 12, 62 10",
+    "M 2 10 C 20 12, 44 13, 62 15",
+    "M 2 14 C 22 10, 42 11, 62 13",
+    "M 2 11 C 22 15, 42 14, 62 12",
+    "M 2 16 C 24 13, 40 12, 62 11",
+    "M 2 9 C 24 12, 40 13, 62 14",
+    "M 2 13 C 18 11, 38 15, 62 12",
+    "M 2 12 C 18 15, 38 10, 62 13",
+    "M 2 14 C 26 12, 46 10, 62 12",
+    "M 2 11 C 26 13, 46 15, 62 13",
+  ],
+  medium: [
+    "M 2 17 C 17.6 8, 34.4 18, 62 9",
+    "M 2 9 C 20 18, 39.2 8, 62 17",
+    "M 2 14 C 12.8 8, 24.8 8, 34.4 13 S 53.6 18, 62 12",
+    "M 2 18 C 20 18, 34.4 8, 62 9",
+    "M 2 8 C 12.8 18, 41.6 18, 62 17",
+    "M 2 17 C 18 8, 46 8, 62 17",
+    "M 2 9 C 18 18, 46 18, 62 9",
+    "M 2 10 C 16 18, 30 9, 62 16",
+    "M 2 16 C 16 9, 34 17, 62 10",
+    "M 2 13 C 16 8, 28 17, 44 11 C 54 8, 58 14, 62 12",
+  ],
+  tight: [
+    "M 2 12 C 10 8, 16 18, 24 13 C 32 8, 40 18, 48 13 C 54 9, 58 16, 62 12",
+    "M 2 14 C 8 18, 12 8, 20 12 C 28 17, 34 8, 42 13 C 48 18, 56 9, 62 14",
+    "M 2 10 C 8 16, 14 17, 20 11 C 26 8, 32 9, 38 15 C 44 18, 52 12, 62 9",
+    "M 2 16 C 10 10, 14 8, 22 12 C 30 17, 36 18, 44 13 C 50 9, 56 8, 62 13",
+    "M 2 9 C 10 14, 14 18, 22 15 C 30 11, 34 8, 42 10 C 50 13, 54 18, 62 16",
+    "M 2 13 C 8 9, 14 8, 18 12 C 24 17, 30 18, 36 14 C 42 9, 50 8, 56 12 C 59 15, 60 16, 62 15",
+    "M 2 15 C 6 9, 12 9, 18 14 C 24 18, 30 17, 36 11 C 42 8, 50 9, 56 14 C 58 16, 60 17, 62 16",
+    "M 2 11 C 8 17, 16 16, 20 11 C 24 8, 30 8, 36 12 C 42 16, 48 17, 54 12 C 57 9, 60 9, 62 11",
+    "M 2 17 C 8 12, 12 8, 20 10 C 28 12, 30 17, 38 17 C 46 17, 48 10, 56 9 C 59 9, 61 10, 62 11",
+    "M 2 12 C 6 8, 12 8, 16 13 C 20 18, 26 18, 30 13 C 34 8, 40 8, 44 13 C 48 18, 54 18, 58 13 C 60 11, 61 10, 62 10",
+  ],
+};
+
+/**
+ * The shape family of a line layer, from its id: aerial lifts run geometrically,
+ * major roads, railways, ferries and admin borders bend gently, paths, hiking
+ * routes and contours wind. Everything else — minor roads, pistes, cycle
+ * routes, waterways, protected-area borders and custom layers — is in between.
+ */
+export function lineShapeFamilyFor(layerId: string): LineShapeFamily {
+  if (layerId.startsWith("road_aerialway")) return "geometric";
+  if (/^road_(major|rail|ferry)/.test(layerId) || layerId.startsWith("border_admin")) return "flat";
+  if (/^road_(path|hiking)/.test(layerId) || layerId.startsWith("relief_contour")) return "tight";
+  return "medium";
+}
+
 /** Vertical extent of the curves above (all stay within y = 8…18). */
 const PATH_EXTENT = 10;
 /**
@@ -175,16 +221,20 @@ function gapMask(path: SVGElement, d: string, stroke: Stroke, scale: number): SV
 }
 
 /**
- * Stacked line strokes on a curved path: blur/casing below, the main stroke on
- * top, dash arrays, caps and blur from the evaluated layers; a casing's gap is
- * masked out, not painted. All strokes are scaled together when the widest
- * would not fit, so casing and main keep their ratio at every zoom.
+ * Stacked line strokes on a curve of the main layer's shape family (see
+ * {@link LINE_SHAPES}): blur/casing below, the main stroke on top, dash arrays,
+ * caps and blur from the evaluated layers; a casing's gap is masked out, not
+ * painted. All strokes are scaled together when the widest would not fit, so
+ * casing and main keep their ratio at every zoom.
  */
 export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElement {
-  const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-line`);
+  const main = layers.find((l) => l.role === "main") ?? layers[0];
+  const family = main ? lineShapeFamilyFor(main.id) : "medium";
+  const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-line ${CLASS}-swatch-line-${family}`);
   const strokes = layers.map(strokeOf).filter((s): s is Stroke => Boolean(s));
   if (!strokes.length) return box;
-  const d = LINE_PATHS[Math.abs(Math.trunc(variant)) % LINE_PATHS.length];
+  const shapes = LINE_SHAPES[family];
+  const d = shapes[Math.abs(Math.trunc(variant)) % shapes.length];
 
   const widest = Math.max(...strokes.map((s) => s.width));
   const scale = widest > MAX_STROKE ? MAX_STROKE / widest : 1;
@@ -432,22 +482,15 @@ export function createIconSwatch(layer: SwatchLayer, getImage?: GetImage): HTMLE
 }
 
 /** Number of line curve variants available to {@link createLineSwatch}. */
-export const LINE_VARIANTS = LINE_PATHS.length;
-
 /**
  * Stable pseudo-random variant for an entry key (FNV-1a hash), so a legend row
  * keeps its line bend or polygon shape across updates while neighbouring rows
- * differ. The swatch builders reduce it modulo their number of shapes.
+ * differ. The swatch builders reduce it modulo their family's number of shapes.
  */
 export function swatchVariantFor(key: string): number {
   let h = 2166136261;
   for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
   return h >>> 0;
-}
-
-/** The curve index {@link swatchVariantFor} selects for a key. */
-export function lineVariantFor(key: string): number {
-  return swatchVariantFor(key) % LINE_PATHS.length;
 }
 
 /** Pick the swatch shape from the entry's main layer type and hand the stack to the matching builder. */

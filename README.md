@@ -73,9 +73,12 @@ evaluated paint and layout, and builds:
   border …), with a swatch stacked from the layer and its casing/blur/texture
   layers using the evaluated colours, widths, gaps and dash patterns at the
   current zoom (a casing's gap is masked out, not painted, so a translucent
-  road still shows the route band beneath it). Lines are drawn as a curved SVG stroke stack — one of ten
-  bends (gentle curves, arches, sags, a serpentine, a sideways jog), chosen per
-  entry so rows differ but stay put across updates — scaled
+  road still shows the route band beneath it). Lines are drawn as a curved SVG stroke stack whose bend
+  comes from one of four families, picked by how the feature runs on the map —
+  straight with sharp bends for aerial lifts, gentle for major roads, railways,
+  ferries and admin borders, wavier for minor roads, pistes, cycle routes and
+  waterways, winding for paths and contours — one of its shapes per entry, so
+  rows differ but stay put across updates — scaled
   together when too wide; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the

@@ -11,12 +11,12 @@ export {
   applyTextStyle,
   textPlacement,
   swatchVariantFor,
-  lineVariantFor,
-  LINE_VARIANTS,
+  lineShapeFamilyFor,
+  LINE_SHAPES,
   fillShapeFamilyFor,
   FILL_SHAPES,
 } from "./swatch";
-export type { FillShapeFamily } from "./swatch";
+export type { FillShapeFamily, LineShapeFamily } from "./swatch";
 export type { CssFont } from "./fonts";
 export { LEGEND_METADATA_KEY } from "./types";
 export type {

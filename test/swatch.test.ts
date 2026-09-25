@@ -6,11 +6,26 @@ import {
   createSymbolPreview,
   fillShapeFamilyFor,
   FILL_SHAPES,
-  lineVariantFor,
-  LINE_VARIANTS,
+  lineShapeFamilyFor,
+  LINE_SHAPES,
   swatchVariantFor,
   textPlacement,
 } from "../src/swatch";
+
+/** Coordinates of an SVG path, command-aware (H carries x only, V y only). */
+function coordsOf(d: string): { xs: number[]; ys: number[] } {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const [, command, coords] of d.matchAll(/([MLCSHV])([^MLCSHVZ]*)/g)) {
+    const numbers = coords
+      .trim()
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .map(Number);
+    numbers.forEach((n, i) => (command === "H" || (command !== "V" && i % 2 === 0) ? xs : ys).push(n));
+  }
+  return { xs, ys };
+}
 import type { TextStyle } from "../src/types";
 
 const cases: Array<[Partial<TextStyle> | undefined, ReturnType<typeof textPlacement>]> = [
@@ -45,24 +60,65 @@ describe("createSymbolPreview", () => {
   });
 });
 
-describe("line variants", () => {
-  it("assigns a stable variant per key within range", () => {
-    expect(lineVariantFor("road:major_dark")).toBe(lineVariantFor("road:major_dark"));
-    for (const k of ["road:major_dark", "road:minor", "road:path", "water:waterway", "border:admin_country"]) {
-      const v = lineVariantFor(k);
-      expect(v).toBeGreaterThanOrEqual(0);
-      expect(v).toBeLessThan(LINE_VARIANTS);
-    }
-    const distinct = new Set(["road:major_dark", "road:minor", "road:path", "water:waterway", "border:admin_country", "road:rail"].map(lineVariantFor));
-    expect(distinct.size).toBeGreaterThan(1);
+describe("line shapes", () => {
+  const line = (id: string) => ({ id, type: "line", role: "main", order: 0, paint: { "line-color": "rgba(0,0,0,1)", "line-width": 2 }, layout: {} });
+
+  it("picks the shape family from how the feature runs on the map", () => {
+    expect(lineShapeFamilyFor("road_aerialway_chair_lift")).toBe("geometric");
+    expect(lineShapeFamilyFor("road_major_dark")).toBe("flat");
+    expect(lineShapeFamilyFor("road_rail_bridge")).toBe("flat");
+    expect(lineShapeFamilyFor("road_ferry")).toBe("flat");
+    expect(lineShapeFamilyFor("border_admin_country")).toBe("flat");
+    expect(lineShapeFamilyFor("road_path_alpine")).toBe("tight");
+    expect(lineShapeFamilyFor("road_hiking")).toBe("tight");
+    expect(lineShapeFamilyFor("relief_contour_monochrome")).toBe("tight");
+    // the middle is the default: minor roads, pistes, cycle routes, waterways, protected areas, custom layers
+    expect(lineShapeFamilyFor("road_minor")).toBe("medium");
+    expect(lineShapeFamilyFor("road_piste_alpine")).toBe("medium");
+    expect(lineShapeFamilyFor("road_cycling_route")).toBe("medium");
+    expect(lineShapeFamilyFor("water_waterway")).toBe("medium");
+    expect(lineShapeFamilyFor("border_protected_area")).toBe("medium");
+    expect(lineShapeFamilyFor("customer_pipeline")).toBe("medium");
   });
 
-  it("draws the chosen curve", () => {
-    const layer = { id: "l", type: "line", role: "main", order: 0, paint: { "line-color": "rgba(0,0,0,1)", "line-width": 2 }, layout: {} };
-    const a = createLineSwatch([layer], 0).querySelector("path")?.getAttribute("d");
-    const b = createLineSwatch([layer], 1).querySelector("path")?.getAttribute("d");
-    expect(a).not.toBe(b);
-    expect(createLineSwatch([layer], LINE_VARIANTS).querySelector("path")?.getAttribute("d")).toBe(a); // wraps around
+  it("draws the variant's curve of that family and marks the box with it", () => {
+    const shapes = LINE_SHAPES.geometric;
+    for (const variant of [0, 1, shapes.length, shapes.length + 2]) {
+      const box = createLineSwatch([line("road_aerialway_gondola")], variant);
+      expect(box.classList.contains("maplibre-legend-control-swatch-line-geometric")).toBe(true);
+      expect(box.querySelector("path")?.getAttribute("d")).toBe(shapes[variant % shapes.length]); // wraps around
+    }
+    expect(
+      createLineSwatch([line("road_path")], 3)
+        .querySelector("path")
+        ?.getAttribute("d"),
+    ).toBe(LINE_SHAPES.tight[3]);
+  });
+
+  it("offers five geometric shapes and ten of every other family", () => {
+    expect(LINE_SHAPES.geometric).toHaveLength(5);
+    for (const family of ["flat", "medium", "tight"] as const) expect(LINE_SHAPES[family]).toHaveLength(10);
+    for (const shapes of Object.values(FILL_SHAPES)) expect(shapes).toHaveLength(10);
+  });
+
+  it("keeps every curve edge to edge inside the stroke band and every family distinct", () => {
+    for (const [family, shapes] of Object.entries(LINE_SHAPES)) {
+      expect(new Set(shapes).size).toBe(shapes.length);
+      for (const d of shapes) {
+        const { xs, ys } = coordsOf(d);
+        expect(Math.min(...xs)).toBe(2); // edge to edge, so butt caps cut flush
+        expect(Math.max(...xs)).toBe(62);
+        expect(Math.min(...ys)).toBeGreaterThanOrEqual(8); // the band wide strokes are scaled to fit
+        expect(Math.max(...ys)).toBeLessThanOrEqual(18);
+        expect(/[CS]/.test(d)).toBe(family !== "geometric"); // geometric bends sharply, the rest curves
+      }
+    }
+  });
+
+  it("uses one stable variant per key for lines and fills alike", () => {
+    expect(swatchVariantFor("road:motorway")).toBe(swatchVariantFor("road:motorway"));
+    const distinct = new Set(["road:major_dark", "road:minor", "road:path", "water:waterway", "border:admin_country", "road:rail"].map(swatchVariantFor));
+    expect(distinct.size).toBeGreaterThan(1);
   });
 });
 
@@ -183,40 +239,21 @@ describe("fill shapes", () => {
     );
   });
 
-  it("offers ten shapes per family and ten line bends", () => {
-    expect(LINE_VARIANTS).toBe(10);
-    for (const shapes of Object.values(FILL_SHAPES)) expect(shapes).toHaveLength(10);
-  });
-
   it("keeps every shape inside the box with its margin and every family distinct", () => {
     for (const shapes of Object.values(FILL_SHAPES)) {
       expect(new Set(shapes).size).toBe(shapes.length);
       for (const d of shapes) {
         expect(d.trim().endsWith("Z")).toBe(true);
-        // every coordinate inside the 64×26 box minus the 2 px margin (H carries x only, V y only)
-        for (const segment of d.matchAll(/([MLCHV])([^MLCHVZ]*)/g)) {
-          const [, command, coords] = segment;
-          const numbers = coords
-            .trim()
-            .split(/[\s,]+/)
-            .filter(Boolean)
-            .map(Number);
-          numbers.forEach((n, i) => {
-            const isX = command === "H" || (command !== "V" && i % 2 === 0);
-            expect(n).toBeGreaterThanOrEqual(2);
-            expect(n).toBeLessThanOrEqual(isX ? 62 : 24);
-          });
-        }
+        // every coordinate inside the 64×26 box minus the 2 px margin
+        const { xs, ys } = coordsOf(d);
+        expect(Math.min(...xs, ...ys)).toBeGreaterThanOrEqual(2);
+        expect(Math.max(...xs)).toBeLessThanOrEqual(62);
+        expect(Math.max(...ys)).toBeLessThanOrEqual(24);
       }
     }
     expect(FILL_SHAPES.geometric.every((d) => !/[CLQ]/.test(d))).toBe(true); // orthogonal: only H/V edges
     expect(FILL_SHAPES.regular.every((d) => !/[CQ]/.test(d))).toBe(true); // straight edges
     expect(FILL_SHAPES.organic.every((d) => /C/.test(d))).toBe(true); // curves
-  });
-
-  it("uses one stable variant per key for lines and fills alike", () => {
-    expect(swatchVariantFor("road:motorway")).toBe(swatchVariantFor("road:motorway"));
-    expect(lineVariantFor("road:motorway")).toBe(swatchVariantFor("road:motorway") % LINE_VARIANTS);
   });
 });
 
