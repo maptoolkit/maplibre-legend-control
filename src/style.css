@@ -7,7 +7,10 @@
   --legend-control-map: 0 2px 8px rgba(25, 31, 57, 0.15), 0 0 0 1px rgba(25, 31, 57, 0.06);
   --legend-control-border-color: #e1e2ea;
   --legend-control-bg-color: hsl(90, 23%, 95%); /* overridden with the style's background colour */
-  --legend-control-bg-subtle: #f6f6f9;
+  /* thin native scrollbar like the styleeditor's, coloured for the panel's own
+     ground (switched to light on dark backgrounds by the control) */
+  --legend-control-scrollbar-thumb: rgba(25, 31, 57, 0.28);
+  --legend-control-scrollbar-track: transparent;
   --legend-control-radius: 8px;
   --legend-control-radius-sm: 4px;
   --legend-control-space-1: 4px;
@@ -40,41 +43,6 @@
   box-shadow: var(--legend-control-map);
 }
 
-/* header (toggle) */
-.maplibre-legend-control .maplibre-legend-control-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  height: auto;
-  padding: var(--legend-control-space-3) var(--legend-control-space-4);
-  background: var(--legend-control-bg-color);
-  border: none;
-  border-radius: 0;
-  font: inherit;
-  font-weight: 700;
-  font-size: 14px;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.maplibre-legend-control .maplibre-legend-control-header:hover {
-  background: var(--legend-control-bg-subtle);
-}
-.maplibre-legend-control .maplibre-legend-control-header::after {
-  content: "";
-  width: 8px;
-  height: 8px;
-  margin-left: var(--legend-control-space-2);
-  border-right: 2px solid var(--legend-control-color-fg-muted);
-  border-bottom: 2px solid var(--legend-control-color-fg-muted);
-  transform: rotate(45deg) translateY(-2px);
-  transition: transform var(--legend-control-duration) var(--legend-control-ease);
-}
-.maplibre-legend-control.maplibre-legend-control-collapsed .maplibre-legend-control-header::after {
-  transform: rotate(-45deg) translateY(2px);
-}
-
 /* list — ONE grid across all groups: the left column is as wide as the widest
    swatch/symbol anywhere in the legend, so centred symbols share one axis and
    nothing gets clipped; group headings span both columns. */
@@ -84,15 +52,16 @@
   column-gap: var(--legend-control-space-3);
   align-items: center;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--legend-control-scrollbar-thumb) var(--legend-control-scrollbar-track);
   padding: 0 var(--legend-control-space-4) var(--legend-control-space-3);
-  border-top: 1px solid var(--legend-control-border-color);
 }
 .maplibre-legend-control .maplibre-legend-control-group,
 .maplibre-legend-control .maplibre-legend-control-entries,
 .maplibre-legend-control .maplibre-legend-control-entry {
   display: contents;
 }
-.maplibre-legend-control.maplibre-legend-control-collapsed .maplibre-legend-control-list {
+.maplibre-legend-control.maplibre-legend-control-collapsed {
   display: none;
 }
 .maplibre-legend-control .maplibre-legend-control-empty {

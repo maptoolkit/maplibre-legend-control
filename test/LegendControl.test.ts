@@ -16,7 +16,12 @@ function createMockMap(options: { withFeatures?: boolean; background?: string | 
   Object.defineProperty(mapContainer, "clientHeight", { value: 300 });
   const layers: Array<Record<string, unknown>> = [...layerOrder.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => ({ id, type: "line", source: "mtk" }));
   const background = options.background === null ? undefined : (options.background ?? "rgba(240,244,236,1)");
-  if (background) layers.unshift({ id: "background", type: "background", paint: { "background-color": ["interpolate", ["linear"], ["zoom"], 11, background, 14, background] } });
+  if (background)
+    layers.unshift({
+      id: "background",
+      type: "background",
+      paint: { "background-color": ["interpolate", ["linear"], ["zoom"], 11, background, 14, background] },
+    });
   return {
     on: (event: string, listener: () => void) => {
       (listeners[event] ??= []).push(listener);
@@ -50,7 +55,8 @@ describe("LegendControl", () => {
     expect(container).toBeInstanceOf(HTMLElement);
     expect(container.classList.contains("maplibregl-ctrl")).toBe(true);
     expect(container.classList.contains("maplibre-legend-control")).toBe(true);
-    expect(container.querySelector(".maplibre-legend-control-title")?.textContent).toBe("Legend");
+    expect(container.getAttribute("aria-label")).toBe("Legend"); // the title is the accessible name only
+    expect(container.querySelector(".maplibre-legend-control-header")).toBeNull(); // no header row
     expect(container.querySelector(".maplibre-legend-control-list")).not.toBeNull();
   });
 
@@ -58,7 +64,7 @@ describe("LegendControl", () => {
     const map = createMockMap();
     map._locale["LegendControl.Title"] = "Legende";
     const container = new LegendControl().onAdd(map);
-    expect(container.querySelector(".maplibre-legend-control-title")?.textContent).toBe("Legende");
+    expect(container.getAttribute("aria-label")).toBe("Legende");
   });
 
   it("renders groups and entries from the rendered features once the map is idle", () => {
@@ -72,7 +78,18 @@ describe("LegendControl", () => {
     const groups = [...container.querySelectorAll(".maplibre-legend-control-group")].map((g) => (g as HTMLElement).dataset.group);
     expect(groups).toEqual(["place", "road", "nature", "poi"]);
     const keys = [...container.querySelectorAll(".maplibre-legend-control-entry")].map((e) => (e as HTMLElement).dataset.key);
-    expect(keys).toEqual(["place:town", "place:village", "road:major_dark", "road:minor", "road:hiking", "road:path", "nature:wood", "nature:farmland", "poi:fountain", "poi:peak"]);
+    expect(keys).toEqual([
+      "place:town",
+      "place:village",
+      "road:major_dark",
+      "road:minor",
+      "road:hiking",
+      "road:path",
+      "nature:wood",
+      "nature:farmland",
+      "poi:fountain",
+      "poi:peak",
+    ]);
 
     // left column: the map label in the map font; right column: the type
     const town = container.querySelector('[data-key="place:town"]') as HTMLElement;
@@ -117,7 +134,7 @@ describe("LegendControl", () => {
   it("caps the list at 60 % of the map height and the panel at the map width", () => {
     const container = new LegendControl().onAdd(createMockMap());
     const list = container.querySelector(".maplibre-legend-control-list") as HTMLElement;
-    expect(list.style.maxHeight).toBe("180px"); // 0.6 × 300, header has no height in jsdom
+    expect(list.style.maxHeight).toBe("180px"); // 0.6 × 300
     expect(container.style.maxWidth).toBe("380px"); // map width − 20
   });
 
@@ -169,10 +186,22 @@ describe("LegendControl", () => {
     // one full query + four band queries (top, bottom, left, right — 5 % of 400×300)
     expect(spy.mock.calls.map((c) => JSON.stringify(c[0] ?? null))).toEqual([
       "null",
-      JSON.stringify([[0, 0], [400, 15]]),
-      JSON.stringify([[0, 285], [400, 300]]),
-      JSON.stringify([[0, 0], [20, 300]]),
-      JSON.stringify([[380, 0], [400, 300]]),
+      JSON.stringify([
+        [0, 0],
+        [400, 15],
+      ]),
+      JSON.stringify([
+        [0, 285],
+        [400, 300],
+      ]),
+      JSON.stringify([
+        [0, 0],
+        [20, 300],
+      ]),
+      JSON.stringify([
+        [380, 0],
+        [400, 300],
+      ]),
     ]);
     const town = control.querySelector('[data-key="place:town"] .maplibre-legend-control-symbol-text');
     expect(town?.textContent).toBe("Tulln an der Donau"); // Randstadt at x = 5 sits in the left band
@@ -201,7 +230,7 @@ describe("LegendControl", () => {
     expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(true);
     expect(container.querySelectorAll(".maplibre-legend-control-entry")).toHaveLength(0);
 
-    (container.querySelector(".maplibre-legend-control-header") as HTMLButtonElement).click();
+    control.open();
     expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(false);
     expect(container.querySelectorAll(".maplibre-legend-control-entry").length).toBeGreaterThan(0);
     vi.useRealTimers();

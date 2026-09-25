@@ -113,7 +113,7 @@ without a tag are ignored. The contract is documented in
 
 | Option           | Type               | Default                              | Description                                                                                                                                                                    |
 | ---------------- | ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `collapsed`      | `boolean`          | `false`                              | Start collapsed to the title; updates are deferred until the panel is opened.                                                                                                  |
+| `collapsed`      | `boolean`          | `false`                              | Start hidden; `open()` shows the panel and updates are deferred until then. The control has no header of its own — the host provides the trigger (a toolbar button, a key).    |
 | `language`       | `string`           | `<html lang>`, else browser language | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key.                                                                             |
 | `edgeBuffer`     | `number`           | `0.05`                               | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label.                                           |
 | `groups`         | `string[]`         | all                                  | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`).                                                               |
@@ -128,8 +128,8 @@ const control = new LegendControl();
 map.addControl(control);
 
 control.update(); // re-read the viewport now
-control.open();
-control.close();
+control.open(); // show the panel
+control.close(); // hide it
 control.toggle();
 control.getModel(); // { groups: [{ id, label, entries: [{ key, kind, label, name?, swatch }] }] }
 ```
@@ -147,7 +147,7 @@ without it the browser falls back to its default sans-serif.
 
 ## Localization
 
-The control reads its UI strings from the map's `locale` table, like MapLibre's built-in controls:
+The control reads its UI strings from the map's `locale` table, like MapLibre's built-in controls — `LegendControl.Title` is the panel's accessible name (there is no visible header), `LegendControl.Empty` the text shown when nothing is in view:
 
 ```js
 const map = new maplibregl.Map({
@@ -165,7 +165,9 @@ The panel takes the map's ground colour: the style's `background` layer at the
 current zoom (`--legend-control-bg-color`, fallback `hsl(90, 23%, 95%)`), so
 names and swatches sit on the same ground as on the map; on a dark background
 the text colours switch to light (`.maplibre-legend-control-dark`). Pass
-`background: "<css colour>"` to fix it instead.
+`background: "<css colour>"` to fix it instead. The list scrolls with a thin
+native scrollbar (`scrollbar-width: thin`) whose thumb is coloured for the
+panel's ground (`--legend-control-scrollbar-thumb`, light on dark backgrounds).
 
 Appearance is controlled via CSS custom properties on `.maplibre-legend-control`, defined in `style.css`. Override them in your own stylesheet to theme the control:
 

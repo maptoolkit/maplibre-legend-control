@@ -8,7 +8,9 @@ import { LEGEND_METADATA_KEY, type LegendManifest, type LegendModel, type Render
  */
 export type LegendControlOptions = {
   /**
-   * Whether the legend panel starts collapsed to its title.
+   * Whether the panel starts hidden; `open()` shows it and updates are
+   * deferred until then. The control has no header of its own — the host
+   * provides the trigger (a toolbar button, a key).
    * @defaultValue `false`
    */
   collapsed?: boolean;
@@ -99,7 +101,6 @@ export class LegendControl implements IControl {
   options: LegendControlOptions;
   private _map?: Map;
   private _container?: HTMLElement;
-  private _header?: HTMLButtonElement;
   private _list?: HTMLElement;
   private _timer?: ReturnType<typeof setTimeout>;
   private _model?: LegendModel;
@@ -126,24 +127,13 @@ export class LegendControl implements IControl {
     const locale = getMapLocale(map);
     locale["LegendControl.Title"] ??= "Legend";
     locale["LegendControl.Empty"] ??= "Nothing to show in this view";
-    locale["LegendControl.Toggle"] ??= "Show or hide the legend";
 
     this._container = document.createElement("div");
     this._container.classList.add("maplibregl-ctrl", "maplibregl-ctrl-group", CLASS);
+    // no header: the title is the panel's accessible name only
+    this._container.setAttribute("role", "region");
+    this._container.setAttribute("aria-label", getUIString(map, "LegendControl.Title"));
     if (this.options.collapsed) this._container.classList.add(`${CLASS}-collapsed`);
-
-    const header = document.createElement("button");
-    header.type = "button";
-    header.classList.add(`${CLASS}-header`);
-    header.title = getUIString(map, "LegendControl.Toggle");
-    header.setAttribute("aria-expanded", String(!this.options.collapsed));
-    const title = document.createElement("span");
-    title.classList.add(`${CLASS}-title`);
-    title.textContent = getUIString(map, "LegendControl.Title");
-    header.appendChild(title);
-    header.addEventListener("click", () => this.toggle());
-    this._container.appendChild(header);
-    this._header = header;
 
     this._list = document.createElement("div");
     this._list.classList.add(`${CLASS}-list`);
@@ -167,21 +157,18 @@ export class LegendControl implements IControl {
     }
     this._container = undefined;
     this._list = undefined;
-    this._header = undefined;
     this._map = undefined;
   }
 
-  /** Expand the panel. */
+  /** Show the panel (and catch up on a deferred update). */
   open() {
     this._container?.classList.remove(`${CLASS}-collapsed`);
-    this._header?.setAttribute("aria-expanded", "true");
     if (this._dirty) this.update();
   }
 
-  /** Collapse the panel to its title. */
+  /** Hide the panel; updates are deferred until it is shown again. */
   close() {
     this._container?.classList.add(`${CLASS}-collapsed`);
-    this._header?.setAttribute("aria-expanded", "false");
   }
 
   toggle() {
@@ -253,7 +240,7 @@ export class LegendControl implements IControl {
     set("--legend-control-color-fg-strong", "rgba(255, 255, 255, 0.92)");
     set("--legend-control-color-fg-muted", "rgba(255, 255, 255, 0.7)");
     set("--legend-control-border-color", "rgba(255, 255, 255, 0.16)");
-    set("--legend-control-bg-subtle", "rgba(255, 255, 255, 0.08)");
+    set("--legend-control-scrollbar-thumb", "rgba(255, 255, 255, 0.3)");
     container.classList.toggle(`${CLASS}-dark`, dark);
   }
 
@@ -271,10 +258,22 @@ export class LegendControl implements IControl {
     const bx = Math.max(1, Math.round(width * buffer));
     const by = Math.max(1, Math.round(height * buffer));
     const bands: Array<[[number, number], [number, number]]> = [
-      [[0, 0], [width, by]], // top
-      [[0, height - by], [width, height]], // bottom
-      [[0, 0], [bx, height]], // left
-      [[width - bx, 0], [width, height]], // right
+      [
+        [0, 0],
+        [width, by],
+      ], // top
+      [
+        [0, height - by],
+        [width, height],
+      ], // bottom
+      [
+        [0, 0],
+        [bx, height],
+      ], // left
+      [
+        [width - bx, 0],
+        [width, height],
+      ], // right
     ];
     const cut = new Set<string>();
     for (const band of bands) {
@@ -294,8 +293,7 @@ export class LegendControl implements IControl {
     const width = box?.clientWidth ?? 0;
     if (height > 0) {
       const ratio = this.options.maxHeightRatio ?? 0.6;
-      const header = this._header?.offsetHeight ?? 0;
-      this._list.style.maxHeight = `${Math.max(48, Math.round(height * ratio) - header)}px`;
+      this._list.style.maxHeight = `${Math.max(48, Math.round(height * ratio))}px`;
     }
     if (width > 0) this._container.style.maxWidth = `${Math.max(160, width - 20)}px`;
   }
@@ -389,7 +387,13 @@ export function isDark(color: string): boolean {
   const hsl = /^hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/i.exec(color);
   if (rgb) [r, g, b] = [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
   else if (hex) {
-    const h = hex[1].length < 6 ? hex[1].split("").map((c) => c + c).join("") : hex[1];
+    const h =
+      hex[1].length < 6
+        ? hex[1]
+            .split("")
+            .map((c) => c + c)
+            .join("")
+        : hex[1];
     [r, g, b] = [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   } else if (hsl) return Number(hsl[3]) < 45;
   if (r === undefined || g === undefined || b === undefined) return false;
