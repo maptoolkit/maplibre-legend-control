@@ -95,8 +95,9 @@ describe("line shapes", () => {
     ).toBe(LINE_SHAPES.tight[3]);
   });
 
-  it("offers five geometric shapes and ten of every other family", () => {
-    expect(LINE_SHAPES.geometric).toHaveLength(5);
+  it("offers four geometric shapes, two of them straight, and ten of every other family", () => {
+    expect(LINE_SHAPES.geometric).toHaveLength(4);
+    expect(LINE_SHAPES.geometric.filter((d) => d.match(/[MLHV]/g)?.length === 2)).toHaveLength(2); // two straight runs, differently oriented
     for (const family of ["flat", "medium", "tight"] as const) expect(LINE_SHAPES[family]).toHaveLength(10);
     for (const shapes of Object.values(FILL_SHAPES)) expect(shapes).toHaveLength(10);
   });

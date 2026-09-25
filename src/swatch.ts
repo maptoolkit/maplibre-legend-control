@@ -92,7 +92,8 @@ export type LineShapeFamily = "geometric" | "flat" | "medium" | "tight";
 
 /**
  * Curves through the 64×26 swatch box, so a road reads as a road, by family:
- * `geometric` runs straight with sharp bends (aerial lifts), `flat` bends
+ * `geometric` runs straight, level or climbing, or bends sharply at a pylon
+ * (aerial lifts), `flat` bends
  * gently (major roads, railways, ferries, admin borders), `medium` is wavier
  * (minor roads, pistes, cycle routes, waterways) and `tight` winds (paths,
  * contours). One of them is picked per entry from {@link swatchVariantFor} —
@@ -101,7 +102,12 @@ export type LineShapeFamily = "geometric" | "flat" | "medium" | "tight";
  * strokes end flush like a map cut-out.
  */
 export const LINE_SHAPES: Readonly<Record<LineShapeFamily, readonly string[]>> = {
-  geometric: ["M 2 13 H 62", "M 2 17 L 62 9", "M 2 9 L 32 17 L 62 10", "M 2 17 L 30 9 L 62 15", "M 2 16 L 20 16 L 34 9 L 62 9"],
+  geometric: [
+    "M 2 13 H 62", // straight, level
+    "M 2 17 L 62 9", // straight, climbing
+    "M 2 17 L 30 9 L 62 15", // one sharp bend at a pylon
+    "M 2 16 L 20 16 L 34 9 L 62 9", // a level run, then a climb
+  ],
   flat: [
     "M 2 15 C 20 13, 44 12, 62 10",
     "M 2 10 C 20 12, 44 13, 62 15",
