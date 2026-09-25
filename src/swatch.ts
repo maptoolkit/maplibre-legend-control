@@ -651,13 +651,28 @@ function fitIconBehind(textEl: HTMLElement, icon: SwatchLayer, text?: TextStyle,
   return true;
 }
 
+/**
+ * The name, with a break opportunity after every slash. CSS breaks at spaces
+ * and hyphens by itself; a slash is where a map name like "Wien/Vienna" wants
+ * to break too, and `<wbr>` offers exactly that without changing the text.
+ */
+function setName(target: HTMLElement, name: string): void {
+  const parts = name.split("/");
+  target.textContent = "";
+  parts.forEach((part, i) => {
+    const last = i === parts.length - 1;
+    target.append(last ? part : `${part}/`);
+    if (!last) target.append(document.createElement("wbr"));
+  });
+}
+
 export function createSymbolPreview(entry: { name?: string; text?: TextStyle; icon?: SwatchLayer }, getImage?: GetImage): HTMLElement {
   const box = el("span", `${CLASS}-symbol`);
 
   let textEl: HTMLElement | undefined;
   if (entry.name) {
     textEl = el("span", `${CLASS}-symbol-text`);
-    textEl.textContent = entry.name;
+    setName(textEl, entry.name);
     if (entry.text) applyTextStyle(textEl, entry.text);
   }
   // A shield: the icon is stretched behind the text, so it is not a picture of

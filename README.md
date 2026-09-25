@@ -113,7 +113,7 @@ evaluated paint and layout, and builds:
   its `content` box and grows only in the middle (`border-image`), a plain one
   is stretched as a whole. It therefore grows with the number it carries, and an
   uneven padding shifts the number inside it, as on the map. Names wrap at
-  spaces and hyphens only; a longer one widens the column.
+  spaces, hyphens and slashes only; a longer one widens the column.
 
 Hairlines separate the two columns and the groups: a trace of the text colour,
 so they stay faint on whatever ground the style paints

@@ -268,6 +268,19 @@ describe("fill shapes", () => {
   });
 });
 
+describe("names", () => {
+  it("offers a break after every slash, without changing the text", () => {
+    const box = createSymbolPreview({ name: "Wien/Vienna", text: { fontStack: ["Rosario Regular"] } });
+    const text = box.querySelector(".maplibre-legend-control-symbol-text") as HTMLElement;
+    expect(text.textContent).toBe("Wien/Vienna"); // the slash stays with the part before it
+    expect(text.querySelectorAll("wbr")).toHaveLength(1);
+    expect(text.innerHTML).toBe("Wien/<wbr>Vienna");
+    // a name without a slash stays a plain text node
+    const plain = createSymbolPreview({ name: "Niederösterreich", text: { fontStack: ["Rosario Regular"] } });
+    expect(plain.querySelector("wbr")).toBeNull();
+  });
+});
+
 describe("shields (icon-text-fit)", () => {
   const image = { data: { width: 4, height: 4, data: new Uint8ClampedArray(4 * 4 * 4).fill(255) }, pixelRatio: 1, sdf: true };
   // jsdom has no 2D canvas; the recolouring itself is covered by the icon swatch tests
