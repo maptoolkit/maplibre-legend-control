@@ -162,11 +162,13 @@ export function lineShapeFamilyFor(layerId: string): LineShapeFamily {
 /** Vertical extent of the curves above (all stay within y = 8…18). */
 const PATH_EXTENT = 10;
 /**
- * Strokes wider than this (incl. casing gaps) are scaled down together, keeping
- * their ratios: half the stroke lies above/below the curve, so curve extent +
- * widest stroke must fit the box height.
+ * Strokes wider than this (incl. casing gaps and their blur) are scaled down
+ * together, keeping their ratios: half the stroke lies above/below the curve,
+ * so curve extent + widest stroke must fit the box height.
  */
 const MAX_STROKE = SWATCH_H - PATH_EXTENT;
+/** A blur wider than this stops reading as a soft edge and just washes the swatch out. */
+const MAX_BLUR = 3;
 
 type Stroke = { color: string; width: number; gap: number; opacity: number; blur: number; dash?: number[]; cap: string; join: string; role: string };
 
@@ -242,8 +244,16 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
   const shapes = LINE_SHAPES[family];
   const d = shapes[Math.abs(Math.trunc(variant)) % shapes.length];
 
-  const widest = Math.max(...strokes.map((s) => s.width));
-  const scale = widest > MAX_STROKE ? MAX_STROKE / widest : 1;
+  // A blurred stroke reaches its blur radius beyond its own width on each side
+  // (a piste casing at z17 is 49 px wide with a 12 px blur), so stroke and blur
+  // share the budget — otherwise the soft edge is cut off by the box. Below the
+  // blur cap both scale together; above it the blur is fixed and only the
+  // stroke has to fit what is left.
+  const fit = (st: Stroke) => {
+    const shared = MAX_STROKE / (st.width + 2 * st.blur);
+    return st.blur * shared <= MAX_BLUR ? shared : (MAX_STROKE - 2 * MAX_BLUR) / st.width;
+  };
+  const scale = Math.min(1, ...strokes.map(fit));
 
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", `0 0 ${SWATCH_W} ${SWATCH_H}`);
@@ -273,7 +283,7 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
       const [on, off = 0] = dash;
       path.setAttribute("stroke-dashoffset", String(round2(-(on + off / 2))));
     }
-    if (stroke.blur > 0) path.style.filter = `blur(${Math.min(stroke.blur * scale, 3)}px)`;
+    if (stroke.blur > 0) path.style.filter = `blur(${Math.min(stroke.blur * scale, MAX_BLUR)}px)`;
     if (stroke.gap > 0) svg.appendChild(gapMask(path, d, stroke, scale));
     svg.appendChild(path);
   }

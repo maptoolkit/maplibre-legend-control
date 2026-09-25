@@ -80,7 +80,7 @@ evaluated paint and layout, and builds:
   waterways, winding for paths and contours — one of its shapes per entry,
   taken from the layer's position in the style so that layers drawn next to
   each other never share a shape, stable across updates — scaled
-  together when too wide; the copies come from one and the same feature, ground level
+  together with their blur when too wide; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the
   hiking band together with the path it runs on. Fills are polygons in one of

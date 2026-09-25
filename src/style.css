@@ -223,6 +223,9 @@
   display: block;
   overflow: visible;
 }
+/* the soft end of a blurred stroke may reach a little past the box, into the
+   column gap — it is cut vertically by the stroke fit, not by the box */
+.maplibre-legend-control .maplibre-legend-control-swatch-line,
 .maplibre-legend-control .maplibre-legend-control-swatch-line svg {
   display: block;
   overflow: visible;

@@ -124,12 +124,12 @@ describe("line shapes", () => {
 });
 
 describe("wide strokes", () => {
-  const mk = (id: string, role: string, width: number, gap = 0) => ({
+  const mk = (id: string, role: string, width: number, gap = 0, blur = 0) => ({
     id,
     type: "line",
     role,
     order: role === "casing" ? 0 : 1,
-    paint: { "line-color": "rgba(0,0,0,1)", "line-width": width, ...(gap ? { "line-gap-width": gap } : {}) },
+    paint: { "line-color": "rgba(0,0,0,1)", "line-width": width, ...(gap ? { "line-gap-width": gap } : {}), ...(blur ? { "line-blur": blur } : {}) },
     layout: { "line-cap": "round" },
   });
 
@@ -150,6 +150,16 @@ describe("wide strokes", () => {
     expect(cut.getAttribute("stroke")).toBe("black");
     expect(Number(cut.getAttribute("stroke-width"))).toBeCloseTo((24 * 16) / 28, 5); // the gap, scaled like the strokes
     expect(svg.querySelector("path.maplibre-legend-control-stroke-main")?.getAttribute("mask")).toBeNull();
+  });
+
+  it("makes room for the blur, so the soft edge is not cut off by the box", () => {
+    // z17 alpine piste: 36 px main, casing 6 px around a 36 px gap with a 12 px blur
+    const svg = createLineSwatch([mk("casing", "casing", 6, 36, 12), mk("main", "main", 36)]);
+    const [casing, main] = [...svg.querySelectorAll("path.maplibre-legend-control-stroke")] as SVGPathElement[];
+    const width = Number(casing.getAttribute("stroke-width"));
+    const blur = Number(casing.style.filter.match(/blur\(([\d.]+)px\)/)![1]);
+    expect(width + 2 * blur).toBeCloseTo(16, 5); // stroke and its soft edge together fit the 26 px box under the 10 px curve
+    expect(Number(main.getAttribute("stroke-width")) / width).toBeCloseTo(36 / 48, 5); // ratios kept
   });
 
   it("leaves narrow stacks unscaled", () => {
