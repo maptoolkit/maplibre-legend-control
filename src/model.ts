@@ -262,12 +262,24 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     if (!copiesByIdentity.has(id)) copiesByIdentity.set(id, []);
     copiesByIdentity.get(id)!.push(feature);
   }
-  /** The copies of one feature that an overlay entry stacks: same group, drawn, not a crossing duplicate or a label. */
-  const stackable = (feature: RenderedFeature, group: string) =>
-    (copiesByIdentity.get(featureIdentity(feature)) ?? []).filter((copy) => {
-      const tag = tagOf(copy);
-      return Boolean(tag && !tag.hidden && !tag.crossing && !tag.instance && tag.group === group && !TEXT_ROLES.has(tag.role ?? ""));
-    });
+  /**
+   * The copies of one feature that an overlay entry stacks: same group, drawn,
+   * no label. Crossing duplicates are normally left out — they render
+   * differently from the ground-level copy — but where a stretch of the route
+   * runs over a bridge or through a tunnel they are the only road the map
+   * draws for it, and without them the band would stand alone.
+   */
+  const stackable = (feature: RenderedFeature, group: string) => {
+    const copies = copiesByIdentity.get(featureIdentity(feature)) ?? [];
+    const usable = (withCrossings: boolean) =>
+      copies.filter((copy) => {
+        const tag = tagOf(copy);
+        if (!tag || tag.hidden || tag.instance || tag.group !== group || TEXT_ROLES.has(tag.role ?? "")) return false;
+        return withCrossings || !tag.crossing;
+      });
+    const ground = usable(false);
+    return ground.length > 1 ? ground : usable(true); // 1 = the band itself, nothing under it
+  };
 
   // Class entries: one main copy represents the entry — the first ground-level
   // one (a tunnel or bridge duplicate renders differently); its identity lets

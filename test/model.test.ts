@@ -87,6 +87,16 @@ describe("buildLegendModel", () => {
     // the first rendered stretch runs on a road this zoom does not draw; the entry takes the one with the fuller stack
     expect(hiking.swatch.map((l) => `${l.id}:${l.role}`)).toEqual(["road_hiking:main", "road_path_casing:casing", "road_path:main", "road_hiking_label:label"]);
     expect(hiking.swatch.find((l) => l.role === "main")?.paint["line-opacity"]).toBe(0.4); // the band of that stretch, not the bare one
+  });
+
+  it("stacks the crossing copies where a route runs over a bridge and nothing else is drawn under it", () => {
+    // only the bridge stretch is rendered: its road comes from a crossing layer, and the band must not stand alone
+    const onlyBridge = features.filter(
+      (f) => !(f.layer.id.startsWith("road_path") && !f.layer.id.endsWith("_bridge")) || f.properties.walking_network === "iwn",
+    );
+    const model = build({ features: onlyBridge, isFullyVisible: fullyVisible(onlyBridge) });
+    const hiking = model.groups.flatMap((g) => g.entries).find((e) => e.key === "road:hiking")!;
+    expect(hiking.swatch.map((l) => l.id)).toContain("road_path_bridge");
     // the path entry itself keeps its own stack
     expect(entry("road:path")?.swatch.map((l) => l.id)).toEqual(["road_path_casing", "road_path"]);
   });

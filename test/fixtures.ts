@@ -190,6 +190,32 @@ export const features: RenderedFeature[] = [
     ],
     { "line-dasharray": { from: [2, 3], to: [2, 3] } },
   ),
+  // a stretch of the route on a bridge: the road under it is drawn by crossing
+  // layers only, which a ground-level stretch beats — but they beat a bare band
+  road(
+    "road_hiking",
+    "main",
+    { key: "hiking", overlay: true },
+    "path",
+    { walking_network: "iwn" },
+    [
+      [300, 200],
+      [320, 200],
+    ],
+    { "line-width": 9 },
+  ),
+  road(
+    "road_path_bridge",
+    "main",
+    { key: "path", crossing: "bridge" },
+    "path",
+    { walking_network: "iwn" },
+    [
+      [300, 200],
+      [320, 200],
+    ],
+    { "line-width": 2 },
+  ),
   // a stretch of the route drawn on its own (the road it runs on is out of this zoom).
   // It comes first in query order, so it must not be the copy that represents the entry.
   road(
