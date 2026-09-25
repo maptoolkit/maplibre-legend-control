@@ -103,7 +103,9 @@ export function queryFixtures(list: RenderedFeature[], box?: [[number, number], 
   const [[x0, y0], [x1, y1]] = box;
   return list.filter((f) => {
     if (f.layer.type !== "symbol") return true;
-    const c = f.geometry?.coordinates as [number, number] | undefined;
+    const raw = f.geometry?.coordinates as number[] | number[][] | undefined;
+    // line-placed symbols (a road shield) carry the line: take its first point as the anchor
+    const c = (Array.isArray(raw?.[0]) ? raw[0] : raw) as [number, number] | undefined;
     if (!c || typeof c[0] !== "number") return true;
     return c[0] >= x0 && c[0] <= x1 && c[1] >= y0 && c[1] <= y1;
   });
@@ -244,6 +246,24 @@ export const features: RenderedFeature[] = [
     [360, 300],
     [400, 300],
   ]),
+  // a road shield: its own row, the symbol as the map draws it (icon + the number on it)
+  {
+    layer: {
+      id: "road_major_shield",
+      type: "symbol",
+      metadata: { [KEY]: { role: "shield", group: "road", instance: true, key: "major_shield" } },
+      paint: {},
+      layout: { "icon-image": { name: "sdf:shield" }, "text-field": asToString("A22") },
+    },
+    properties: { type: "motorway", ref: "A22" },
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [180, 150],
+        [240, 150],
+      ], // mid-viewport, so the edge buffer keeps it
+    },
+  },
   // a stretch of the route on a bridge: the road under it is drawn by crossing
   // layers only, which a ground-level stretch beats — but they beat a bare band
   road(

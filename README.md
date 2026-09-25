@@ -100,13 +100,15 @@ evaluated paint and layout, and builds:
   strokes lie below as a soft halo along the edge, as faint as on the map (a
   building's shadow does not frame it). SDF sprite icons are recoloured with
   their `icon-color`;
-- **instance entries** — for standalone label layers (places, waters, POIs) one
-  entry per type, showing the most prominent feature among those whose label
-  lies entirely inside the map minus a 5 % edge buffer (lowest rank, then the
-  one closest to the centre) as the map draws it: the
-  name in the map's own font, size, colour and halo, and for POIs the icon with
-  the name placed by `text-anchor`/`text-offset` — text below the icon, beside
-  it, or over it.
+- **instance entries** — for symbol layers, which are a map symbol of their own
+  and cannot be drawn into a line or a polygon: places, waters and POIs give one
+  entry per type, a road shield, a route name, a difficulty grade or a one-way
+  arrow one entry per layer. Each shows the most prominent feature among those
+  whose label lies entirely inside the map minus a 5 % edge buffer (lowest rank,
+  then the one closest to the centre) as the map draws it: the name in the map's
+  own font, size, colour and halo, and where there is an icon the icon with the
+  name placed by `text-anchor`/`text-offset` — text below the icon, beside it,
+  or over it.
 
 Hairlines separate the two columns and the groups: a trace of the text colour,
 so they stay faint on whatever ground the style paints

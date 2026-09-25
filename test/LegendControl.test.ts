@@ -121,6 +121,7 @@ describe("LegendControl", () => {
       "road:cycling_infra_lane",
       "road:cycling_route",
       "road:hiking",
+      "road:major_shield",
       "road:path",
       "nature:wood",
       "nature:farmland",

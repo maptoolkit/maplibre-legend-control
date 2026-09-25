@@ -235,7 +235,9 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     if (!tag || tag.hidden || !tag.group || groupHidden(tag.group)) continue;
 
     if (tag.instance) {
-      const value = tag.keyProperty ? valueToString(feature.properties?.[tag.keyProperty]) : undefined;
+      // a dynamic key (one row per place type) or a fixed one (a shield, a
+      // one-way arrow: the layer itself is the symbol, one row for all of them)
+      const value = entryValueOf(tag, feature);
       if (!value) continue;
       const entryKey = resolveKey(`${tag.group}:${value}`);
       if (isHiddenKey(entryKey)) continue;

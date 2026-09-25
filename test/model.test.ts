@@ -58,6 +58,14 @@ describe("buildLegendModel", () => {
     expect(entry("road:minor")?.swatch.map((l) => l.id)).toEqual(["road_major_casing", "road_minor"]);
   });
 
+  it("makes a row of a symbol layer with a fixed key, showing it as the map draws it", () => {
+    const shield = entry("road:major_shield")!;
+    expect(shield.kind).toBe("instance");
+    expect(shield.name).toBe("A22"); // the rendered text, not the layer id
+    expect(shield.icon?.id).toBe("road_major_shield");
+    expect(shield.swatch).toEqual([]); // the symbol is the row, there is nothing to stack
+  });
+
   it("represents an overlay by a stretch that carries no other overlay", () => {
     const route = entry("road:cycling_route")!;
     // the route runs on a cycle lane in one place and on a plain road in another: the plain one shows what the row means

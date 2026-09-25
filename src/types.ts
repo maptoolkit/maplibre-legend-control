@@ -24,7 +24,12 @@ export type LegendLayerTag = {
   keyByValue?: Array<{ property: string; values: Record<string, string> }>;
   /** Supporting layers: the main layers whose entries this layer contributes to. */
   attachesTo?: string[];
-  /** Standalone labels: one entry per key value, showing the most prominent named feature. */
+  /**
+   * The layer is a map symbol of its own — a place label, a road shield, a
+   * one-way arrow — and gets a row showing it as drawn, never stacking into
+   * another entry's swatch. With `keyProperty` one row per value, with `key`
+   * one row for the layer.
+   */
   instance?: boolean;
   /** Feature property ranking instance candidates (lower = more prominent). */
   rankProperty?: string;
