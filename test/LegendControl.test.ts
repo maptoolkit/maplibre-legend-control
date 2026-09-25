@@ -270,6 +270,34 @@ describe("LegendControl", () => {
     vi.useRealTimers();
   });
 
+  it("links the style's web-font stylesheet into the page once", () => {
+    vi.useFakeTimers();
+    const href = "https://static.example.org/webfonts/webfonts.css"; // fonts.css of the fixture manifest
+    const count = () => [...document.head.querySelectorAll('link[rel="stylesheet"]')].filter((l) => l.getAttribute("href") === href).length;
+    const control = new LegendControl({ updateDelay: 0 });
+    control.onAdd(createMockMap());
+    vi.runAllTimers();
+    expect(count()).toBe(1); // exactly one link in the page, however many controls and updates came before
+    control.update();
+    new LegendControl({ updateDelay: 0 }).onAdd(createMockMap());
+    vi.runAllTimers();
+    expect(count()).toBe(1);
+    vi.useRealTimers();
+  });
+
+  it("takes the fonts option over the manifest, and links nothing with false", () => {
+    vi.useFakeTimers();
+    const own = "https://fonts.example.com/own.css";
+    new LegendControl({ updateDelay: 0, fonts: own }).onAdd(createMockMap());
+    vi.runAllTimers();
+    expect([...document.head.querySelectorAll("link")].some((l) => l.getAttribute("href") === own)).toBe(true);
+    const links = document.head.querySelectorAll("link").length;
+    new LegendControl({ updateDelay: 0, fonts: false }).onAdd(createMockMap());
+    vi.runAllTimers();
+    expect(document.head.querySelectorAll("link").length).toBe(links);
+    vi.useRealTimers();
+  });
+
   it("restricts the legend to the configured groups", () => {
     vi.useFakeTimers();
     const container = new LegendControl({ groups: ["place"], updateDelay: 0 }).onAdd(createMockMap());

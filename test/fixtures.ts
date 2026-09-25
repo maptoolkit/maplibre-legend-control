@@ -5,6 +5,7 @@ const asToString = (s: string) => ({ toString: () => s });
 
 export const manifest: LegendManifest = {
   version: 1,
+  fonts: { css: "https://static.example.org/webfonts/webfonts.css" },
   groups: {
     place: { label: { de: "Orte", en: "Places" }, order: 10 },
     road: { label: { de: "Straßen und Verkehr", en: "Roads and transport" }, order: 20 },

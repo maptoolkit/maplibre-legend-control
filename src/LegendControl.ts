@@ -59,6 +59,16 @@ export type LegendControlOptions = {
    * @defaultValue `"auto"`
    */
   background?: "auto" | string;
+  /**
+   * Where the map's typefaces are served as web fonts: a stylesheet URL that
+   * is linked into the page once, so names appear in the font the map draws
+   * them in (the browser fetches only the faces the legend uses). Left unset,
+   * the URL comes from the style itself — `fonts.css` in its legend manifest,
+   * which Maptoolkit styles carry. A string overrides it, `false` links
+   * nothing (the page provides its own fonts).
+   * @defaultValue from the style's legend manifest
+   */
+  fonts?: string | false;
 };
 
 /**
@@ -104,6 +114,20 @@ function detectLanguage(): string {
  * layers), standalone label layers become instance entries showing the most
  * prominent named feature per type in the map's own font.
  */
+/**
+ * Link a stylesheet into the page once (the web fonts of the map's typefaces).
+ * Never removed again: fonts stay useful to the page, and a re-added control
+ * finds them in place.
+ */
+function linkStylesheet(href: string | false | undefined): void {
+  if (!href || typeof document === "undefined") return;
+  for (const link of document.head.querySelectorAll('link[rel="stylesheet"]')) if (link.getAttribute("href") === href) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = href;
+  document.head.appendChild(link);
+}
+
 export class LegendControl implements IControl {
   options: LegendControlOptions;
   private _map?: Map;
@@ -242,6 +266,7 @@ export class LegendControl implements IControl {
     }
     const style = map.getStyle();
     const manifest = (style?.metadata as Record<string, unknown> | undefined)?.[LEGEND_METADATA_KEY] as LegendManifest | undefined;
+    linkStylesheet(this.options.fonts === undefined ? manifest?.fonts?.css : this.options.fonts);
     const layerOrder = new globalThis.Map<string, number>((style?.layers ?? []).map((l, i) => [l.id, i]));
     const canvas = map.getCanvas();
     const width = canvas.clientWidth;

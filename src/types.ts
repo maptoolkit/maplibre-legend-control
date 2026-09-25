@@ -43,6 +43,8 @@ export type LegendManifestItem = {
 /** The root manifest in `style.metadata["maptoolkit:legend"]`. */
 export type LegendManifest = {
   version?: number;
+  /** Where the map's typefaces are served as web fonts: `css` is a stylesheet with their `@font-face` rules. */
+  fonts?: { css?: string };
   groups?: Record<string, LegendManifestItem>;
   entries?: Record<string, LegendManifestItem>;
 };

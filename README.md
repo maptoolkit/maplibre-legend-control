@@ -124,16 +124,17 @@ without a tag are ignored. The contract is documented in
 
 ## Options
 
-| Option           | Type               | Default                              | Description                                                                                                                                                                    |
-| ---------------- | ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `collapsed`      | `boolean`          | `false`                              | Start hidden; the toggle button or `open()` shows the panel, updates are deferred until then.                                                                                  |
-| `toggle`         | `boolean`          | `true`                               | Render a MapLibre control button that shows and hides the panel; in a map corner the panel opens beside it. Hosts with their own trigger (a toolbar button) set `false`.       |
-| `language`       | `string`           | `<html lang>`, else browser language | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key.                                                                             |
-| `edgeBuffer`     | `number`           | `0.05`                               | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label.                                           |
-| `groups`         | `string[]`         | all                                  | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`).                                                               |
-| `updateDelay`    | `number`           | `100`                                | Debounce in ms between the map's `idle` event and the update.                                                                                                                  |
-| `maxHeightRatio` | `number`           | `0.6`                                | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width.               |
-| `background`     | `"auto" \| string` | `"auto"`                             | Panel background: the style's `background` layer colour at the current zoom (fallback `hsl(90, 23%, 95%)`), or a fixed CSS colour. Text switches to light on dark backgrounds. |
+| Option           | Type               | Default                              | Description                                                                                                                                                                                                               |
+| ---------------- | ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collapsed`      | `boolean`          | `false`                              | Start hidden; the toggle button or `open()` shows the panel, updates are deferred until then.                                                                                                                             |
+| `toggle`         | `boolean`          | `true`                               | Render a MapLibre control button that shows and hides the panel; in a map corner the panel opens beside it. Hosts with their own trigger (a toolbar button) set `false`.                                                  |
+| `language`       | `string`           | `<html lang>`, else browser language | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key.                                                                                                                        |
+| `edgeBuffer`     | `number`           | `0.05`                               | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label.                                                                                      |
+| `groups`         | `string[]`         | all                                  | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`).                                                                                                          |
+| `updateDelay`    | `number`           | `100`                                | Debounce in ms between the map's `idle` event and the update.                                                                                                                                                             |
+| `maxHeightRatio` | `number`           | `0.6`                                | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width.                                                          |
+| `background`     | `"auto" \| string` | `"auto"`                             | Panel background: the style's `background` layer colour at the current zoom (fallback `hsl(90, 23%, 95%)`), or a fixed CSS colour. Text switches to light on dark backgrounds.                                            |
+| `fonts`          | `string \| false`  | from the style                       | Stylesheet of the map's web fonts, linked into the page once so names appear in the map's typeface. Maptoolkit styles carry its URL in their legend manifest (`fonts.css`); a string overrides it, `false` links nothing. |
 
 ## Methods
 
@@ -156,8 +157,13 @@ render their own legend: `buildLegendModel(...)`, `parseFontStack(...)`,
 
 Instance names are set in the map's font stack (`text-font`), mapped to CSS
 (`"Rosario Bold Italic"` → `font-family: "Rosario"; font-weight: 700;
-font-style: italic`). The matching web font has to be available to the page;
-without it the browser falls back to its default sans-serif.
+font-style: italic`, `"Alegreya Small Caps Bold"` → `"Alegreya SC"`). The web
+fonts come from the style: a Maptoolkit style's legend manifest names the
+stylesheet that serves its typefaces (`fonts.css`, on `static.maptoolkit.net`),
+and the control links it into the page once — the browser then fetches only
+the faces the legend actually draws. Pass `fonts: "<url>"` for a stylesheet
+of your own, or `fonts: false` when the page already provides the fonts. Without
+any of these the browser falls back to its default sans-serif.
 
 ## Localization
 
