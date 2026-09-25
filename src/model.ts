@@ -256,11 +256,34 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     mainCopies.get(entryKey)!.push({ feature, tag });
   }
 
+  const copiesByIdentity = new Map<string, RenderedFeature[]>();
+  for (const feature of features) {
+    const id = featureIdentity(feature);
+    if (!copiesByIdentity.has(id)) copiesByIdentity.set(id, []);
+    copiesByIdentity.get(id)!.push(feature);
+  }
+  /** The copies of one feature that an overlay entry stacks: same group, drawn, not a crossing duplicate or a label. */
+  const stackable = (feature: RenderedFeature, group: string) =>
+    (copiesByIdentity.get(featureIdentity(feature)) ?? []).filter((copy) => {
+      const tag = tagOf(copy);
+      return Boolean(tag && !tag.hidden && !tag.crossing && !tag.instance && tag.group === group && !TEXT_ROLES.has(tag.role ?? ""));
+    });
+
   // Class entries: one main copy represents the entry — the first ground-level
   // one (a tunnel or bridge duplicate renders differently); its identity lets
   // the supporting layers contribute copies of the very same feature.
+  /** entry key → the copy that represents it */
+  const chosen = new Map<string, { feature: RenderedFeature; tag: LegendLayerTag }>();
   for (const [entryKey, copies] of mainCopies) {
-    const best = copies.find((c) => !c.tag.crossing) ?? copies[0];
+    const ground = copies.filter((c) => !c.tag.crossing);
+    const pool = ground.length ? ground : copies;
+    // A route band on its own says little, and not every stretch of it has a
+    // rendered road: of the copies take the one with the fullest stack, so the
+    // swatch shows the route together with the road it runs on.
+    const best = pool[0].tag.overlay
+      ? pool.reduce((a, b) => (stackable(b.feature, b.tag.group!).length > stackable(a.feature, a.tag.group!).length ? b : a))
+      : pool[0];
+    chosen.set(entryKey, best);
     representative.set(entryKey, featureIdentity(best.feature));
     const main = swatchLayerOf(best.feature, "main", layerOrder);
     entries.set(entryKey, {
@@ -316,23 +339,14 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
   // Overlays (routes, cycle lanes) are drawn onto other roads: show the whole
   // rendered stack of the representative feature — every non-crossing copy of
   // it in the group, e.g. hiking band + path casing + path — not the band alone.
-  const copiesByIdentity = new Map<string, RenderedFeature[]>();
-  for (const feature of features) {
-    const id = featureIdentity(feature);
-    if (!copiesByIdentity.has(id)) copiesByIdentity.set(id, []);
-    copiesByIdentity.get(id)!.push(feature);
-  }
-  for (const [entryKey, copies] of mainCopies) {
+  for (const [entryKey, rep] of chosen) {
     const entry = entries.get(entryKey);
-    const rep = copies.find((c) => !c.tag.crossing) ?? copies[0];
     if (!entry || !rep.tag.overlay) continue;
     const seen = new Set(entry.swatch.map((l) => l.id));
-    for (const copy of copiesByIdentity.get(featureIdentity(rep.feature)) ?? []) {
-      const tag = tagOf(copy);
-      if (!tag || tag.hidden || tag.crossing || tag.group !== rep.tag.group || tag.instance || seen.has(copy.layer.id)) continue;
-      if (TEXT_ROLES.has(tag.role ?? "")) continue;
+    for (const copy of stackable(rep.feature, rep.tag.group!)) {
+      if (seen.has(copy.layer.id)) continue;
       seen.add(copy.layer.id);
-      entry.swatch.push(swatchLayerOf(copy, tag.role ?? "main", layerOrder));
+      entry.swatch.push(swatchLayerOf(copy, tagOf(copy)!.role ?? "main", layerOrder));
     }
   }
 

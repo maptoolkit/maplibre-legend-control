@@ -98,42 +98,219 @@ export function queryFixtures(list: RenderedFeature[], box?: [[number, number], 
 
 export const features: RenderedFeature[] = [
   // motorway: three copies of one road (blur, casing, main) + its label
-  road("road_major_blur", "blur", { attachesTo: ["road_major_dark"] }, "motorway", {}, [[10, 10], [50, 10]]),
-  road("road_major_casing", "casing", { attachesTo: ["road_major_dark", "road_minor"] }, "motorway", {}, [[10, 10], [50, 10]]),
-  road("road_major_dark", "main", { key: "major_dark" }, "motorway", {}, [[10, 10], [50, 10]]),
+  road("road_major_blur", "blur", { attachesTo: ["road_major_dark"] }, "motorway", {}, [
+    [10, 10],
+    [50, 10],
+  ]),
+  road("road_major_casing", "casing", { attachesTo: ["road_major_dark", "road_minor"] }, "motorway", {}, [
+    [10, 10],
+    [50, 10],
+  ]),
+  road("road_major_dark", "main", { key: "major_dark" }, "motorway", {}, [
+    [10, 10],
+    [50, 10],
+  ]),
   // a second, wider road drawn by the same layers — its casing must not be picked for the motorway entry
-  road("road_major_casing", "casing", { attachesTo: ["road_major_dark", "road_minor"] }, "trunk", {}, [[60, 60], [90, 60]], { "line-gap-width": 9 }),
-  road("road_major_dark", "main", { key: "major_dark" }, "trunk", {}, [[60, 60], [90, 60]], { "line-width": 9 }),
+  road(
+    "road_major_casing",
+    "casing",
+    { attachesTo: ["road_major_dark", "road_minor"] },
+    "trunk",
+    {},
+    [
+      [60, 60],
+      [90, 60],
+    ],
+    { "line-gap-width": 9 },
+  ),
+  road(
+    "road_major_dark",
+    "main",
+    { key: "major_dark" },
+    "trunk",
+    {},
+    [
+      [60, 60],
+      [90, 60],
+    ],
+    { "line-width": 9 },
+  ),
   // bridge duplicates: a main copy on a bridge and its shadow — neither may shape the swatch
-  road("road_major_dark_bridge", "main", { key: "major_dark", crossing: "bridge" }, "motorway", {}, [[70, 70], [80, 70]], { "line-width": 7 }),
-  road("road_major_blur_bridge", "blur", { attachesTo: ["road_major_dark", "road_major_dark_bridge"], crossing: "bridge" }, "motorway", {}, [[70, 70], [80, 70]], { "line-width": 12 }),
+  road(
+    "road_major_dark_bridge",
+    "main",
+    { key: "major_dark", crossing: "bridge" },
+    "motorway",
+    {},
+    [
+      [70, 70],
+      [80, 70],
+    ],
+    { "line-width": 7 },
+  ),
+  road(
+    "road_major_blur_bridge",
+    "blur",
+    { attachesTo: ["road_major_dark", "road_major_dark_bridge"], crossing: "bridge" },
+    "motorway",
+    {},
+    [
+      [70, 70],
+      [80, 70],
+    ],
+    { "line-width": 12 },
+  ),
   {
-    layer: { id: "road_major_label", type: "symbol", metadata: { [KEY]: { role: "label", group: "road", attachesTo: ["road_major_dark"] } }, paint: {}, layout: { "text-field": asToString("A22") } },
+    layer: {
+      id: "road_major_label",
+      type: "symbol",
+      metadata: { [KEY]: { role: "label", group: "road", attachesTo: ["road_major_dark"] } },
+      paint: {},
+      layout: { "text-field": asToString("A22") },
+    },
     properties: { type: "motorway", name: "A22" },
-    geometry: { type: "LineString", coordinates: [[10, 10], [50, 10]] },
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [10, 10],
+        [50, 10],
+      ],
+    },
   },
   // a minor road, casing attaches to it too; dashed like MapLibre reports it (cross-faded { from, to })
-  road("road_minor", "main", { key: "minor" }, "service", {}, [[100, 100], [150, 100]], { "line-dasharray": { from: [2, 3], to: [2, 3] } }),
+  road(
+    "road_minor",
+    "main",
+    { key: "minor" },
+    "service",
+    {},
+    [
+      [100, 100],
+      [150, 100],
+    ],
+    { "line-dasharray": { from: [2, 3], to: [2, 3] } },
+  ),
+  // a stretch of the route drawn on its own (the road it runs on is out of this zoom).
+  // It comes first in query order, so it must not be the copy that represents the entry.
+  road(
+    "road_hiking",
+    "main",
+    { key: "hiking", overlay: true },
+    "track",
+    { walking_network: "rwn" },
+    [
+      [260, 200],
+      [280, 200],
+    ],
+    { "line-width": 9 },
+  ),
   // a hiking route: a wide band drawn BELOW the path it runs on (same feature, three copies)
-  road("road_hiking", "main", { key: "hiking", overlay: true }, "path", { walking_network: "rwn" }, [[200, 200], [240, 200]], { "line-width": 9, "line-opacity": 0.4, "line-color": asToString("rgba(220,60,60,1)") }),
-  road("road_path_casing", "casing", { attachesTo: ["road_path"] }, "path", { walking_network: "rwn" }, [[200, 200], [240, 200]], { "line-gap-width": 2 }),
-  road("road_path", "main", { key: "path" }, "path", { walking_network: "rwn" }, [[200, 200], [240, 200]], { "line-width": 2 }),
-  road("road_hiking_label", "label", { attachesTo: ["road_hiking"] }, "path", { walking_network: "rwn" }, [[200, 200], [240, 200]]),
+  road(
+    "road_hiking",
+    "main",
+    { key: "hiking", overlay: true },
+    "path",
+    { walking_network: "rwn" },
+    [
+      [200, 200],
+      [240, 200],
+    ],
+    { "line-width": 9, "line-opacity": 0.4, "line-color": asToString("rgba(220,60,60,1)") },
+  ),
+  road(
+    "road_path_casing",
+    "casing",
+    { attachesTo: ["road_path"] },
+    "path",
+    { walking_network: "rwn" },
+    [
+      [200, 200],
+      [240, 200],
+    ],
+    { "line-gap-width": 2 },
+  ),
+  road(
+    "road_path",
+    "main",
+    { key: "path" },
+    "path",
+    { walking_network: "rwn" },
+    [
+      [200, 200],
+      [240, 200],
+    ],
+    { "line-width": 2 },
+  ),
+  road("road_hiking_label", "label", { attachesTo: ["road_hiking"] }, "path", { walking_network: "rwn" }, [
+    [200, 200],
+    [240, 200],
+  ]),
   // dynamic landcover: two polygons of different type, one texture copy per type
   {
-    layer: { id: "nature_natural", type: "fill", metadata: { [KEY]: { role: "main", group: "nature", keyProperty: "type" } }, paint: { "fill-color": asToString("rgba(120,180,90,1)") }, layout: {} },
+    layer: {
+      id: "nature_natural",
+      type: "fill",
+      metadata: { [KEY]: { role: "main", group: "nature", keyProperty: "type" } },
+      paint: { "fill-color": asToString("rgba(120,180,90,1)") },
+      layout: {},
+    },
     properties: { type: "wood" },
-    geometry: { type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+          [0, 10],
+          [0, 0],
+        ],
+      ],
+    },
   },
   {
-    layer: { id: "nature_natural", type: "fill", metadata: { [KEY]: { role: "main", group: "nature", keyProperty: "type" } }, paint: { "fill-color": asToString("rgba(200,200,120,1)") }, layout: {} },
+    layer: {
+      id: "nature_natural",
+      type: "fill",
+      metadata: { [KEY]: { role: "main", group: "nature", keyProperty: "type" } },
+      paint: { "fill-color": asToString("rgba(200,200,120,1)") },
+      layout: {},
+    },
     properties: { type: "farmland" },
-    geometry: { type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+          [0, 10],
+          [0, 0],
+        ],
+      ],
+    },
   },
   {
-    layer: { id: "nature_natural_texture", type: "fill", metadata: { [KEY]: { role: "texture", group: "nature", attachesTo: ["nature_natural"] } }, paint: { "fill-pattern": { name: "nature:wood" } }, layout: {} },
+    layer: {
+      id: "nature_natural_texture",
+      type: "fill",
+      metadata: { [KEY]: { role: "texture", group: "nature", attachesTo: ["nature_natural"] } },
+      paint: { "fill-pattern": { name: "nature:wood" } },
+      layout: {},
+    },
     properties: { type: "wood" },
-    geometry: { type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+          [0, 10],
+          [0, 0],
+        ],
+      ],
+    },
   },
   // places: two towns (one at the edge, one inside with worse rank), a village; the inside one must win
   place("Randstadt", "town", 5, [5, 150]), // 5 px from the left edge — inside the 5 % buffer (20 px), cut off
@@ -181,7 +358,13 @@ export const features: RenderedFeature[] = [
       type: "symbol",
       metadata: { [KEY]: { role: "label", group: "poi", instance: true, keyProperty: "type", rankProperty: "rank_new" } },
       paint: { "text-color": asToString("rgba(90,60,30,1)") },
-      layout: { "text-field": asToString("Großglockner\n3798 m"), "text-font": ["Rosario Medium Italic"], "text-size": 11, "text-anchor": "center", "text-justify": "left" },
+      layout: {
+        "text-field": asToString("Großglockner\n3798 m"),
+        "text-font": ["Rosario Medium Italic"],
+        "text-size": 11,
+        "text-anchor": "center",
+        "text-justify": "left",
+      },
     },
     properties: { type: "peak", rank_new: 5 },
     geometry: { type: "Point", coordinates: [300, 120] },

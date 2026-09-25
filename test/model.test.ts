@@ -84,7 +84,9 @@ describe("buildLegendModel", () => {
 
   it("shows overlays with the full stack of their feature — the route and the road it runs on", () => {
     const hiking = entry("road:hiking")!;
+    // the first rendered stretch runs on a road this zoom does not draw; the entry takes the one with the fuller stack
     expect(hiking.swatch.map((l) => `${l.id}:${l.role}`)).toEqual(["road_hiking:main", "road_path_casing:casing", "road_path:main", "road_hiking_label:label"]);
+    expect(hiking.swatch.find((l) => l.role === "main")?.paint["line-opacity"]).toBe(0.4); // the band of that stretch, not the bare one
     // the path entry itself keeps its own stack
     expect(entry("road:path")?.swatch.map((l) => l.id)).toEqual(["road_path_casing", "road_path"]);
   });
