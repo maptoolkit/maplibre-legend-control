@@ -210,8 +210,11 @@
 }
 .maplibre-legend-control .maplibre-legend-control-symbol-text {
   display: block;
+  /* wrap where the map wraps: at spaces and hyphens, never inside a word
+     (NIEDERÖSTERREICH stays whole and the panel widens for it) */
   white-space: pre-line;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
   text-align: center;
   color: var(--legend-control-color-fg-strong);
 }

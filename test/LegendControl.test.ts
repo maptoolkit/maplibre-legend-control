@@ -92,6 +92,9 @@ describe("LegendControl", () => {
     expect(css).toContain(".maplibre-legend-control.maplibre-legend-control-collapsed .maplibre-legend-control-panel {");
     expect(css).toContain(".maplibre-legend-control.maplibre-legend-control-collapsed:not(.maplibre-legend-control-with-toggle) {");
     expect(css).not.toMatch(/\.maplibre-legend-control\.maplibre-legend-control-collapsed \{/); // would hide the button too
+    // names wrap at spaces and hyphens like on the map, never inside a word
+    expect(css).not.toMatch(/overflow-wrap:\s*(anywhere|break-word)/);
+    expect(css).not.toMatch(/word-break:\s*break-(all|word)/);
   });
 
   it("has no button with toggle: false — the host provides the trigger", () => {
