@@ -55,7 +55,7 @@ describe("LegendControl", () => {
     expect(container).toBeInstanceOf(HTMLElement);
     expect(container.classList.contains("maplibregl-ctrl")).toBe(true);
     expect(container.classList.contains("maplibre-legend-control")).toBe(true);
-    expect(container.getAttribute("aria-label")).toBe("Legend"); // the title is the accessible name only
+    expect(container.querySelector(".maplibre-legend-control-panel")?.getAttribute("aria-label")).toBe("Legend"); // the title is the panel's accessible name only
     expect(container.querySelector(".maplibre-legend-control-header")).toBeNull(); // no header row
     expect(container.querySelector(".maplibre-legend-control-list")).not.toBeNull();
   });
@@ -64,7 +64,31 @@ describe("LegendControl", () => {
     const map = createMockMap();
     map._locale["LegendControl.Title"] = "Legende";
     const container = new LegendControl().onAdd(map);
-    expect(container.getAttribute("aria-label")).toBe("Legende");
+    expect(container.querySelector(".maplibre-legend-control-panel")?.getAttribute("aria-label")).toBe("Legende");
+  });
+
+  it("renders a MapLibre control button that shows and hides the panel", () => {
+    const map = createMockMap();
+    map._locale["LegendControl.Toggle"] = "Legende ein-/ausblenden";
+    const container = new LegendControl().onAdd(map);
+    expect(container.classList.contains("maplibre-legend-control-with-toggle")).toBe(true);
+    const button = container.querySelector(".maplibre-legend-control-toggle.maplibregl-ctrl-group button") as HTMLButtonElement;
+    expect(button.getAttribute("aria-label")).toBe("Legende ein-/ausblenden");
+    expect(button.querySelector(".maplibregl-ctrl-icon")).not.toBeNull();
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    button.click();
+    expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(true);
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    button.click();
+    expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(false);
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("has no button with toggle: false — the host provides the trigger", () => {
+    const container = new LegendControl({ toggle: false, collapsed: true }).onAdd(createMockMap());
+    expect(container.querySelector(".maplibre-legend-control-toggle")).toBeNull();
+    expect(container.classList.contains("maplibre-legend-control-with-toggle")).toBe(false);
+    expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(true);
   });
 
   it("renders groups and entries from the rendered features once the map is idle", () => {
@@ -135,7 +159,7 @@ describe("LegendControl", () => {
     const container = new LegendControl().onAdd(createMockMap());
     const list = container.querySelector(".maplibre-legend-control-list") as HTMLElement;
     expect(list.style.maxHeight).toBe("180px"); // 0.6 × 300
-    expect(container.style.maxWidth).toBe("380px"); // map width − 20
+    expect((container.querySelector(".maplibre-legend-control-panel") as HTMLElement).style.maxWidth).toBe("380px"); // map width − 20
   });
 
   it("centres every block on the column axis and keeps text-justify inside the block", () => {

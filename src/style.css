@@ -24,23 +24,87 @@
   --legend-control-swatch-width: 64px;
   --legend-control-swatch-height: 26px;
   --legend-control-row-height: 32px;
+  --legend-control-toggle-size: 29px; /* MapLibre's control button */
 
+  /* a transparent column: [toggle button] + panel; in a map corner the panel
+     leaves the flow and opens beside the button (see the corner rules below) */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   box-sizing: border-box;
-  /* grows with its content so no label is ever cut; min = the default width,
-     max + list height are set by the control from the map container's size */
-  width: max-content;
-  min-width: var(--legend-control-width);
-  max-width: 100%;
   font-family: var(--legend-control-font-family);
   font-size: 13px;
   line-height: 1.3;
   color: var(--legend-control-color-fg-strong);
+}
+
+/* the card: grows with its content so no label is ever cut; min = the default
+   width, max + list height are set by the control from the map container's size */
+.maplibre-legend-control .maplibre-legend-control-panel {
+  box-sizing: border-box;
+  width: max-content;
+  min-width: var(--legend-control-width);
   background: var(--legend-control-bg-color);
   border-radius: var(--legend-control-radius);
+  box-shadow: var(--legend-control-map);
   overflow: hidden;
 }
-.maplibre-legend-control:not(:empty) {
-  box-shadow: var(--legend-control-map);
+.maplibre-legend-control.maplibre-legend-control-collapsed .maplibre-legend-control-panel {
+  display: none;
+}
+/* without a toggle button a collapsed control shows nothing at all */
+.maplibre-legend-control.maplibre-legend-control-collapsed:not(.maplibre-legend-control-with-toggle) {
+  display: none;
+}
+
+/* toggle button: MapLibre's control button (maplibregl-ctrl-group + .maplibregl-ctrl-icon) with a legend glyph */
+.maplibre-legend-control .maplibre-legend-control-toggle {
+  flex: 0 0 auto;
+}
+.maplibre-legend-control .maplibre-legend-control-toggle .maplibregl-ctrl-icon {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%23656776'%3E%3Crect x='3' y='4' width='6' height='4' rx='1'/%3E%3Crect x='11' y='5' width='10' height='2' rx='1'/%3E%3Crect x='3' y='10' width='6' height='4' rx='1'/%3E%3Crect x='11' y='11' width='10' height='2' rx='1'/%3E%3Crect x='3' y='16' width='6' height='4' rx='1'/%3E%3Crect x='11' y='17' width='10' height='2' rx='1'/%3E%3C/svg%3E");
+}
+.maplibre-legend-control .maplibre-legend-control-toggle button:hover .maplibregl-ctrl-icon,
+.maplibre-legend-control .maplibre-legend-control-toggle button[aria-expanded="true"] .maplibregl-ctrl-icon {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%23282932'%3E%3Crect x='3' y='4' width='6' height='4' rx='1'/%3E%3Crect x='11' y='5' width='10' height='2' rx='1'/%3E%3Crect x='3' y='10' width='6' height='4' rx='1'/%3E%3Crect x='11' y='11' width='10' height='2' rx='1'/%3E%3Crect x='3' y='16' width='6' height='4' rx='1'/%3E%3Crect x='11' y='17' width='10' height='2' rx='1'/%3E%3C/svg%3E");
+}
+
+/* in a map corner the panel opens beside the button (below/above it in the
+   centre slots), like maplibre-style-control; the control raises its corner
+   while open so the panel overlays the neighbouring controls */
+.maplibregl-ctrl-top-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  position: absolute;
+  top: 0;
+  left: calc(var(--legend-control-toggle-size) + 10px);
+}
+.maplibregl-ctrl-top-right .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  position: absolute;
+  top: 0;
+  right: calc(var(--legend-control-toggle-size) + 10px);
+}
+.maplibregl-ctrl-bottom-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  position: absolute;
+  bottom: 0;
+  left: calc(var(--legend-control-toggle-size) + 10px);
+}
+.maplibregl-ctrl-bottom-right .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  position: absolute;
+  bottom: 0;
+  right: calc(var(--legend-control-toggle-size) + 10px);
+}
+.maplibregl-ctrl-top-center .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  position: absolute;
+  top: calc(var(--legend-control-toggle-size) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+.maplibregl-ctrl-bottom-center .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  position: absolute;
+  bottom: calc(var(--legend-control-toggle-size) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* list — ONE grid across all groups: the left column is as wide as the widest

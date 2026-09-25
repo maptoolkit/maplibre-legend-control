@@ -113,7 +113,8 @@ without a tag are ignored. The contract is documented in
 
 | Option           | Type               | Default                              | Description                                                                                                                                                                    |
 | ---------------- | ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `collapsed`      | `boolean`          | `false`                              | Start hidden; `open()` shows the panel and updates are deferred until then. The control has no header of its own — the host provides the trigger (a toolbar button, a key).    |
+| `collapsed`      | `boolean`          | `false`                              | Start hidden; the toggle button or `open()` shows the panel, updates are deferred until then.                                                                                  |
+| `toggle`         | `boolean`          | `true`                               | Render a MapLibre control button that shows and hides the panel; in a map corner the panel opens beside it. Hosts with their own trigger (a toolbar button) set `false`.       |
 | `language`       | `string`           | `<html lang>`, else browser language | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key.                                                                             |
 | `edgeBuffer`     | `number`           | `0.05`                               | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label.                                           |
 | `groups`         | `string[]`         | all                                  | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`).                                                               |
@@ -147,7 +148,7 @@ without it the browser falls back to its default sans-serif.
 
 ## Localization
 
-The control reads its UI strings from the map's `locale` table, like MapLibre's built-in controls — `LegendControl.Title` is the panel's accessible name (there is no visible header), `LegendControl.Empty` the text shown when nothing is in view:
+The control reads its UI strings from the map's `locale` table, like MapLibre's built-in controls — `LegendControl.Title` is the panel's accessible name (there is no visible header), `LegendControl.Toggle` the button's label, `LegendControl.Empty` the text shown when nothing is in view:
 
 ```js
 const map = new maplibregl.Map({
@@ -155,6 +156,8 @@ const map = new maplibregl.Map({
   style,
   locale: {
     "LegendControl.Title": "Legende",
+    "LegendControl.Toggle": "Legende ein-/ausblenden",
+    "LegendControl.Empty": "Nichts zu zeigen in diesem Ausschnitt",
   },
 });
 ```
@@ -165,7 +168,12 @@ The panel takes the map's ground colour: the style's `background` layer at the
 current zoom (`--legend-control-bg-color`, fallback `hsl(90, 23%, 95%)`), so
 names and swatches sit on the same ground as on the map; on a dark background
 the text colours switch to light (`.maplibre-legend-control-dark`). Pass
-`background: "<css colour>"` to fix it instead. The list scrolls with a thin
+`background: "<css colour>"` to fix it instead. The toggle button is a
+MapLibre control button (`.maplibregl-ctrl-group`, so it looks like the
+navigation buttons next to it); in a map corner the panel opens beside it —
+left of the button in the right corners, right of it in the left corners,
+below/above in the centre slots — overlaying the neighbouring controls while
+open, like `maplibre-style-control`. The list scrolls with a thin
 native scrollbar (`scrollbar-width: thin`) whose thumb is coloured for the
 panel's ground (`--legend-control-scrollbar-thumb`, light on dark backgrounds).
 

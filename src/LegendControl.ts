@@ -8,12 +8,18 @@ import { LEGEND_METADATA_KEY, type LegendManifest, type LegendModel, type Render
  */
 export type LegendControlOptions = {
   /**
-   * Whether the panel starts hidden; `open()` shows it and updates are
-   * deferred until then. The control has no header of its own — the host
-   * provides the trigger (a toolbar button, a key).
+   * Whether the panel starts hidden; the toggle button or `open()` shows it
+   * and updates are deferred until then.
    * @defaultValue `false`
    */
   collapsed?: boolean;
+  /**
+   * Render a MapLibre control button that shows and hides the panel; in a map
+   * corner the panel opens beside it. Hosts with their own trigger (a toolbar
+   * button) set `false` and use `open()`/`close()`.
+   * @defaultValue `true`
+   */
+  toggle?: boolean;
   /**
    * Language of the entry and group labels (`de`, `en`, …), looked up in the
    * style's legend manifest. Falls back to English, then to the humanized key.
@@ -60,6 +66,7 @@ export type LegendControlOptions = {
  */
 export const defaultLegendControlOptions: LegendControlOptions = {
   collapsed: false,
+  toggle: true,
   edgeBuffer: 0.05,
   updateDelay: 100,
   maxHeightRatio: 0.6,
@@ -101,6 +108,8 @@ export class LegendControl implements IControl {
   options: LegendControlOptions;
   private _map?: Map;
   private _container?: HTMLElement;
+  private _panel?: HTMLElement;
+  private _toggleButton?: HTMLButtonElement;
   private _list?: HTMLElement;
   private _timer?: ReturnType<typeof setTimeout>;
   private _model?: LegendModel;
@@ -127,17 +136,42 @@ export class LegendControl implements IControl {
     const locale = getMapLocale(map);
     locale["LegendControl.Title"] ??= "Legend";
     locale["LegendControl.Empty"] ??= "Nothing to show in this view";
+    locale["LegendControl.Toggle"] ??= "Show or hide the legend";
 
+    // a transparent column: [toggle button] + panel (the card)
     this._container = document.createElement("div");
-    this._container.classList.add("maplibregl-ctrl", "maplibregl-ctrl-group", CLASS);
-    // no header: the title is the panel's accessible name only
-    this._container.setAttribute("role", "region");
-    this._container.setAttribute("aria-label", getUIString(map, "LegendControl.Title"));
+    this._container.classList.add("maplibregl-ctrl", CLASS);
     if (this.options.collapsed) this._container.classList.add(`${CLASS}-collapsed`);
 
+    if (this.options.toggle !== false) {
+      // a MapLibre control button — maplibregl-ctrl-group + .maplibregl-ctrl-icon give it the native look
+      this._container.classList.add(`${CLASS}-with-toggle`);
+      const group = document.createElement("div");
+      group.classList.add("maplibregl-ctrl-group", `${CLASS}-toggle`);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.title = getUIString(map, "LegendControl.Toggle");
+      button.setAttribute("aria-label", getUIString(map, "LegendControl.Toggle"));
+      button.setAttribute("aria-expanded", String(!this.options.collapsed));
+      const icon = document.createElement("span");
+      icon.classList.add("maplibregl-ctrl-icon");
+      icon.setAttribute("aria-hidden", "true");
+      button.appendChild(icon);
+      button.addEventListener("click", () => this.toggle());
+      group.appendChild(button);
+      this._container.appendChild(group);
+      this._toggleButton = button;
+    }
+
+    // the card; no visible header — the title is its accessible name only
+    this._panel = document.createElement("div");
+    this._panel.classList.add(`${CLASS}-panel`);
+    this._panel.setAttribute("role", "region");
+    this._panel.setAttribute("aria-label", getUIString(map, "LegendControl.Title"));
     this._list = document.createElement("div");
     this._list.classList.add(`${CLASS}-list`);
-    this._container.appendChild(this._list);
+    this._panel.appendChild(this._list);
+    this._container.appendChild(this._panel);
 
     map.on("idle", this._onIdle);
     map.on("resize", this._onResize);
@@ -152,10 +186,13 @@ export class LegendControl implements IControl {
     this._timer = undefined;
     this._map?.off("idle", this._onIdle);
     this._map?.off("resize", this._onResize);
+    this._raise(false);
     if (this._container?.parentNode) {
       this._container.parentNode.removeChild(this._container);
     }
     this._container = undefined;
+    this._panel = undefined;
+    this._toggleButton = undefined;
     this._list = undefined;
     this._map = undefined;
   }
@@ -163,12 +200,22 @@ export class LegendControl implements IControl {
   /** Show the panel (and catch up on a deferred update). */
   open() {
     this._container?.classList.remove(`${CLASS}-collapsed`);
+    this._toggleButton?.setAttribute("aria-expanded", "true");
+    this._raise(true);
     if (this._dirty) this.update();
   }
 
   /** Hide the panel; updates are deferred until it is shown again. */
   close() {
     this._container?.classList.add(`${CLASS}-collapsed`);
+    this._toggleButton?.setAttribute("aria-expanded", "false");
+    this._raise(false);
+  }
+
+  /** In a map corner the open panel overlays the neighbouring controls (like maplibre-style-control). */
+  private _raise(open: boolean) {
+    const corner = this._toggleButton ? this._container?.parentElement : undefined;
+    if (corner && /\bmaplibregl-ctrl-(top|bottom)-/.test(corner.className)) corner.style.zIndex = open ? "99" : "";
   }
 
   toggle() {
@@ -287,7 +334,7 @@ export class LegendControl implements IControl {
   /** Cap the panel at `maxHeightRatio` of the map's height and at the map's width; the list scrolls. */
   private _fitToMap() {
     const map = this._map;
-    if (!map || !this._container || !this._list) return;
+    if (!map || !this._container || !this._panel || !this._list) return;
     const box = map.getContainer();
     const height = box?.clientHeight ?? 0;
     const width = box?.clientWidth ?? 0;
@@ -295,7 +342,11 @@ export class LegendControl implements IControl {
       const ratio = this.options.maxHeightRatio ?? 0.6;
       this._list.style.maxHeight = `${Math.max(48, Math.round(height * ratio))}px`;
     }
-    if (width > 0) this._container.style.maxWidth = `${Math.max(160, width - 20)}px`;
+    if (width > 0) {
+      // beside the toggle button in a left/right map corner the panel starts a button width further in
+      const beside = Boolean(this._toggleButton) && /\bmaplibregl-ctrl-(top|bottom)-(left|right)\b/.test(this._container.parentElement?.className ?? "");
+      this._panel.style.maxWidth = `${Math.max(160, width - (beside ? 60 : 20))}px`;
+    }
   }
 
   private _scheduleUpdate() {
