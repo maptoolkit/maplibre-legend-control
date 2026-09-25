@@ -268,6 +268,24 @@ describe("fill shapes", () => {
   });
 });
 
+describe("fill stack", () => {
+  it("draws every fill of the stack in draw order, so an opaque base carries a translucent main", () => {
+    const base = { id: "building_base", type: "fill", role: "base", order: 0, paint: { "fill-color": "rgba(248,248,247,1)" }, layout: {} };
+    const footprint = {
+      id: "building_footprint",
+      type: "fill",
+      role: "main",
+      order: 1,
+      paint: { "fill-color": "rgba(238,236,231,0.5)", "fill-outline-color": "rgba(199,198,193,0.5)" },
+      layout: {},
+    };
+    const box = createFillSwatch(footprint, undefined, [base]);
+    const fills = [...box.querySelectorAll("path.maplibre-legend-control-fill")] as SVGPathElement[];
+    expect(fills.map((p) => p.getAttribute("fill"))).toEqual(["rgba(248,248,247,1)", "rgba(238,236,231,0.5)"]); // base below the footprint
+    expect(box.querySelector("path.maplibre-legend-control-fill-outline")).not.toBeNull();
+  });
+});
+
 describe("fill patterns", () => {
   it("asks the map for the pattern image named by a cross-faded fill-pattern", () => {
     const fill = { id: "nature_natural", type: "fill", role: "main", order: 0, paint: { "fill-color": "#9c9" }, layout: {} };

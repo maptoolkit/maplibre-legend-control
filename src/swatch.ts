@@ -362,8 +362,9 @@ function shapePath(d: string, className: string): SVGElement {
 }
 
 /**
- * A polygon of the layer's shape family (see {@link FILL_SHAPES}), filled
- * with the colour and opacity and with the sprite patterns of the stack;
+ * A polygon of the layer's shape family (see {@link FILL_SHAPES}), filled with
+ * every fill of the stack in draw order — colour, opacity and sprite pattern —
+ * so an opaque base below a half-transparent main reads as on the map;
  * `fill-outline-color` as a hairline and every crisp line layer of the stack
  * (casing, outline, band …) as an inner border with its colour, width, opacity
  * and dash pattern — an intermittent lake keeps its dashed shoreline. Shadow
@@ -375,9 +376,6 @@ export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, suppor
   const shapes = FILL_SHAPES[family];
   const d = shapes[Math.abs(Math.trunc(variant)) % shapes.length];
   const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-fill ${CLASS}-swatch-fill-${family}`);
-  const isExtrusion = layer.type === "fill-extrusion";
-  const color = valueToString(layer.paint[isExtrusion ? "fill-extrusion-color" : "fill-color"]);
-  const opacity = clamp(num(layer.paint[isExtrusion ? "fill-extrusion-opacity" : "fill-opacity"], 1), 0, 1);
   const outline = valueToString(layer.paint["fill-outline-color"]);
 
   const svg = document.createElementNS(SVG_NS, "svg");
@@ -407,15 +405,24 @@ export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, suppor
     svg.appendChild(path);
   }
 
-  const fill = shapePath(d, `${CLASS}-fill`);
-  fill.setAttribute("fill", color ?? "none");
-  if (opacity < 1) fill.setAttribute("fill-opacity", String(opacity));
-  svg.appendChild(fill);
-
-  // sprite patterns of the layer and its texture layers, tiled at their CSS size
+  // Every fill of the stack in draw order, each with its own pattern on top of
+  // its own colour: a building's opaque base carries the half-transparent
+  // footprint above it, exactly as the map stacks them.
   let patterns = 0;
-  for (const tex of [layer, ...supporting.filter((l) => l.type === "fill")]) {
-    const name = valueToString(tex.paint["fill-pattern"]);
+  const fills = [layer, ...supporting.filter((l) => l.type === "fill" || l.type === "fill-extrusion")].sort((a, b) => a.order - b.order);
+  for (const f of fills) {
+    const extruded = f.type === "fill-extrusion";
+    const fillColor = valueToString(f.paint[extruded ? "fill-extrusion-color" : "fill-color"]);
+    const fillOpacity = clamp(num(f.paint[extruded ? "fill-extrusion-opacity" : "fill-opacity"], 1), 0, 1);
+    if (fillColor) {
+      const path = shapePath(d, `${CLASS}-fill ${CLASS}-fill-${f.role}`);
+      path.setAttribute("fill", fillColor);
+      if (fillOpacity < 1) path.setAttribute("fill-opacity", String(fillOpacity));
+      svg.appendChild(path);
+    }
+
+    // sprite pattern, tiled at its CSS size
+    const name = valueToString(f.paint["fill-pattern"]);
     const image = name && getImage ? getImage(name) : undefined;
     const canvas = image ? imageToCanvas(image) : undefined;
     if (!canvas) continue;
@@ -435,8 +442,7 @@ export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, suppor
     defs.appendChild(pattern);
     const p = shapePath(d, `${CLASS}-pattern`);
     p.setAttribute("fill", `url(#${id}-pattern-${patterns})`);
-    const texOpacity = clamp(num(tex.paint["fill-opacity"], 1), 0, 1);
-    if (texOpacity < 1) p.setAttribute("fill-opacity", String(texOpacity));
+    if (fillOpacity < 1) p.setAttribute("fill-opacity", String(fillOpacity));
     svg.appendChild(p);
   }
 
