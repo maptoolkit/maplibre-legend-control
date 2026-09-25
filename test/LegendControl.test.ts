@@ -118,6 +118,8 @@ describe("LegendControl", () => {
       "road:major_dark",
       "road:minor_pedestrian",
       "road:minor",
+      "road:cycling_infra_lane",
+      "road:cycling_route",
       "road:hiking",
       "road:path",
       "nature:wood",

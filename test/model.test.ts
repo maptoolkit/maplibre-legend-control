@@ -58,6 +58,19 @@ describe("buildLegendModel", () => {
     expect(entry("road:minor")?.swatch.map((l) => l.id)).toEqual(["road_major_casing", "road_minor"]);
   });
 
+  it("represents an overlay by a stretch that carries no other overlay", () => {
+    const route = entry("road:cycling_route")!;
+    // the route runs on a cycle lane in one place and on a plain road in another: the plain one shows what the row means
+    expect(route.swatch.map((l) => l.id)).toEqual(["road_cycling_route", "road_minor"]);
+    expect(route.swatch.map((l) => l.id)).not.toContain("road_cycling_infra_lane");
+    // with only the shared stretch rendered, the combination is the last resort rather than nothing
+    const shared = features.filter((f) => f.properties.cycling !== "none");
+    const combined = build({ features: shared, isFullyVisible: fullyVisible(shared) })
+      .groups.flatMap((g) => g.entries)
+      .find((e) => e.key === "road:cycling_route")!;
+    expect(combined.swatch.map((l) => l.id)).toContain("road_cycling_infra_lane");
+  });
+
   it("gives a property value its own entry where the layer paints it differently", () => {
     const plain = entry("road:minor")!;
     const pedestrian = entry("road:minor_pedestrian")!;

@@ -293,6 +293,19 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     return ground.length > 1 ? ground : usable(true); // 1 = the band itself, nothing under it
   };
 
+  /**
+   * How well a copy shows its overlay: no other overlay in its stack counts far
+   * more than a long stack, so a cleaner stretch always wins over a busier one.
+   */
+  const overlayScore = (copy: { feature: RenderedFeature; tag: LegendLayerTag }) => {
+    const stack = stackable(copy.feature, copy.tag.group!);
+    const others = stack.filter((other) => {
+      const tag = tagOf(other);
+      return tag?.overlay && tag.role === "main" && other.layer.id !== copy.feature.layer.id;
+    }).length;
+    return (others ? 0 : 1000) + stack.length;
+  };
+
   // Class entries: one main copy represents the entry — the first ground-level
   // one (a tunnel or bridge duplicate renders differently); its identity lets
   // the supporting layers contribute copies of the very same feature.
@@ -302,11 +315,12 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     const ground = copies.filter((c) => !c.tag.crossing);
     const pool = ground.length ? ground : copies;
     // A route band on its own says little, and not every stretch of it has a
-    // rendered road: of the copies take the one with the fullest stack, so the
-    // swatch shows the route together with the road it runs on.
-    const best = pool[0].tag.overlay
-      ? pool.reduce((a, b) => (stackable(b.feature, b.tag.group!).length > stackable(a.feature, a.tag.group!).length ? b : a))
-      : pool[0];
+    // rendered road, so of the rendered copies an overlay takes the one that
+    // shows it best: first one that carries no other overlay — a cycle route on
+    // a plain road says what the row means, one on a cycle lane mixes two rows
+    // into a swatch — and among those the one with the fullest stack. A stretch
+    // sharing its road with another overlay is the last resort, not the default.
+    const best = pool[0].tag.overlay ? pool.reduce((a, b) => (overlayScore(b) > overlayScore(a) ? b : a)) : pool[0];
     chosen.set(entryKey, best);
     representative.set(entryKey, featureIdentity(best.feature));
     const main = swatchLayerOf(best.feature, "main", layerOrder);

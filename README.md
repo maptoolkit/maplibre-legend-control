@@ -84,9 +84,12 @@ evaluated paint and layout, and builds:
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the
   hiking band together with the path it runs on. Of the rendered stretches the
-  one with the fullest stack represents the entry, and where a stretch runs over
-  a bridge or through a tunnel its crossing copies are stacked — otherwise the
-  band would stand alone although the map draws a road under it. Fills are polygons in one of
+  entry takes the one that shows it best: first one that carries no second
+  overlay, so a cycle route is shown on a plain road rather than on a cycle lane
+  unless every stretch in view shares its way, then the one with the fullest
+  stack. Where a stretch runs over a bridge or through a tunnel its crossing
+  copies are stacked — otherwise the band would stand alone although the map
+  draws a road under it. Fills are polygons in one of
   three shape families, picked by what the layer depicts — smooth, gently wavy
   outlines that still tend to the rectangle for natural areas and waters,
   straight-edged parcels for landuse, orthogonal footprints for buildings —

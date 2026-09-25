@@ -26,6 +26,8 @@ export const layerOrder = new Map<string, number>([
   ["nature_natural", 1],
   ["nature_natural_texture", 2],
   ["road_hiking", 2.5],
+  ["road_cycling_route", 2.6],
+  ["road_cycling_infra_lane", 2.7],
   ["road_major_blur", 3],
   ["road_path_casing", 3.2],
   ["road_path", 3.4],
@@ -41,6 +43,15 @@ export const layerOrder = new Map<string, number>([
   ["road_hiking_label", 9.5],
   ["custom-untagged", 10],
 ]);
+
+/** road_minor's tag: every copy of a layer carries the same one. */
+const MINOR_TAG = {
+  key: "minor",
+  keyByValue: [
+    { property: "subtype", values: { pedestrian: "minor_pedestrian" } },
+    { property: "type", values: { track: "minor_track" } },
+  ],
+};
 
 const road = (
   id: string,
@@ -183,13 +194,7 @@ export const features: RenderedFeature[] = [
   road(
     "road_minor",
     "main",
-    {
-      key: "minor",
-      keyByValue: [
-        { property: "subtype", values: { pedestrian: "minor_pedestrian" } },
-        { property: "type", values: { track: "minor_track" } },
-      ],
-    },
+    MINOR_TAG,
     "service",
     {},
     [
@@ -207,13 +212,7 @@ export const features: RenderedFeature[] = [
   road(
     "road_minor",
     "main",
-    {
-      key: "minor",
-      keyByValue: [
-        { property: "subtype", values: { pedestrian: "minor_pedestrian" } },
-        { property: "type", values: { track: "minor_track" } },
-      ],
-    },
+    MINOR_TAG,
     "minor",
     { subtype: "pedestrian" },
     [
@@ -222,6 +221,29 @@ export const features: RenderedFeature[] = [
     ],
     { "line-color": asToString("rgba(250,240,200,1)") },
   ),
+  // a cycle route sharing its way with a cycle lane: two overlays in one stack,
+  // so this stretch must lose to the one below that runs on a plain road
+  road("road_cycling_route", "main", { key: "cycling_route", overlay: true }, "minor", { cycling: "lane" }, [
+    [300, 300],
+    [340, 300],
+  ]),
+  road("road_cycling_infra_lane", "main", { key: "cycling_infra_lane", overlay: true }, "minor", { cycling: "lane" }, [
+    [300, 300],
+    [340, 300],
+  ]),
+  road("road_minor", "main", MINOR_TAG, "minor", { cycling: "lane" }, [
+    [300, 300],
+    [340, 300],
+  ]),
+  // the same route on a plain road — the clean example, whatever the query order
+  road("road_cycling_route", "main", { key: "cycling_route", overlay: true }, "minor", { cycling: "none" }, [
+    [360, 300],
+    [400, 300],
+  ]),
+  road("road_minor", "main", MINOR_TAG, "minor", { cycling: "none" }, [
+    [360, 300],
+    [400, 300],
+  ]),
   // a stretch of the route on a bridge: the road under it is drawn by crossing
   // layers only, which a ground-level stretch beats — but they beat a bare band
   road(
