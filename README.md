@@ -116,7 +116,10 @@ widest symbol and every block sits on one centre axis; `text-justify` only
 aligns the lines inside a block (a peak keeps its elevation left-aligned under
 its name).
 
-Similar-looking types can share one row: a manifest entry may list the `keys`
+The reverse also happens: one layer can paint a few property values
+differently, and its tag then gives those values their own keys
+(`keyByValue` — a pedestrian zone is not a minor road even though one layer
+draws both). Similar-looking types can share one row: a manifest entry may list the `keys`
 it stands for (`place:village` for `place:hamlet`, `place:farm`, …), and the
 control maps rendered keys to it before building the legend. The Maptoolkit
 styles ship such merges for places (small settlements, districts, islands,

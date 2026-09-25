@@ -58,6 +58,18 @@ describe("buildLegendModel", () => {
     expect(entry("road:minor")?.swatch.map((l) => l.id)).toEqual(["road_major_casing", "road_minor"]);
   });
 
+  it("gives a property value its own entry where the layer paints it differently", () => {
+    const plain = entry("road:minor")!;
+    const pedestrian = entry("road:minor_pedestrian")!;
+    expect(pedestrian.label).toBe("Fußgängerzone");
+    // both come from road_minor, each with its own feature — and the casing copy follows its feature
+    expect(plain.swatch.map((l) => l.id)).toEqual(["road_major_casing", "road_minor"]);
+    expect(pedestrian.swatch.map((l) => l.id)).toEqual(["road_major_casing", "road_minor"]);
+    const colorOf = (e: typeof plain) => String(e.swatch.find((l) => l.role === "main")?.paint["line-color"]);
+    expect(colorOf(pedestrian)).toBe("rgba(250,240,200,1)");
+    expect(colorOf(plain)).not.toBe(colorOf(pedestrian));
+  });
+
   it("takes the swatch shape from the main layer's position, and from the key where one layer holds many entries", () => {
     // layers drawn next to each other are next to each other in the legend: different positions, so different shapes
     expect(entry("road:minor")?.variant).toBe(5);

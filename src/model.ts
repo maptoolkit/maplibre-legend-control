@@ -144,6 +144,18 @@ function tagOf(feature: RenderedFeature): LegendLayerTag | undefined {
   return tag && typeof tag === "object" ? (tag as LegendLayerTag) : undefined;
 }
 
+/**
+ * The entry value a main layer gives this feature: a value the layer paints
+ * differently ({@link LegendLayerTag.keyByValue}), else its dynamic or fixed key.
+ */
+function entryValueOf(tag: LegendLayerTag, feature: RenderedFeature): string | undefined {
+  for (const rule of tag.keyByValue ?? []) {
+    const value = valueToString(feature.properties?.[rule.property]);
+    if (value !== undefined && rule.values[value]) return rule.values[value];
+  }
+  return tag.key ?? (tag.keyProperty ? valueToString(feature.properties?.[tag.keyProperty]) : undefined);
+}
+
 function swatchLayerOf(feature: RenderedFeature, role: string, layerOrder: Map<string, number>): SwatchLayer {
   return {
     id: feature.layer.id,
@@ -246,7 +258,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
 
     if (tag.role !== "main") continue;
     mainTags.set(feature.layer.id, tag);
-    const value = tag.key ?? (tag.keyProperty ? valueToString(feature.properties?.[tag.keyProperty]) : undefined);
+    const value = entryValueOf(tag, feature);
     if (!value) continue;
     const entryKey = resolveKey(`${tag.group}:${value}`);
     if (isHiddenKey(entryKey)) continue;
@@ -326,8 +338,9 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       if (!produced) continue;
       const mainTag = mainTags.get(mainId);
       let targetKeys: string[];
-      if (mainTag?.keyProperty) {
-        const value = valueToString(feature.properties?.[mainTag.keyProperty]);
+      if (mainTag?.keyProperty || mainTag?.keyByValue) {
+        // the main splits its features across entries — the copy's own values pick one
+        const value = entryValueOf(mainTag, feature);
         const k = value ? resolveKey(`${mainTag.group}:${value}`) : undefined;
         targetKeys = k && produced.has(k) ? [k] : [];
       } else {

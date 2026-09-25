@@ -14,6 +14,7 @@ export const manifest: LegendManifest = {
   entries: {
     "road:major_dark": { label: { de: "Hauptstraße", en: "Major road" }, order: 1 },
     "road:minor": { label: { de: "Nebenstraße", en: "Minor road" }, order: 3 },
+    "road:minor_pedestrian": { label: { de: "Fußgängerzone", en: "Pedestrian zone" }, order: 3 },
     "nature:wood": { label: { de: "Wald", en: "Forest" }, order: 1 },
     "place:town": { label: { de: "Stadt", en: "Town" }, order: 2 },
     "place:village": { label: { de: "Dorf", en: "Village" }, order: 3, keys: ["place:hamlet", "place:farm"] },
@@ -182,7 +183,13 @@ export const features: RenderedFeature[] = [
   road(
     "road_minor",
     "main",
-    { key: "minor" },
+    {
+      key: "minor",
+      keyByValue: [
+        { property: "subtype", values: { pedestrian: "minor_pedestrian" } },
+        { property: "type", values: { track: "minor_track" } },
+      ],
+    },
     "service",
     {},
     [
@@ -190,6 +197,30 @@ export const features: RenderedFeature[] = [
       [150, 100],
     ],
     { "line-dasharray": { from: [2, 3], to: [2, 3] } },
+  ),
+  // a pedestrian street from the same layer, which the style paints in another
+  // colour: its own entry, and the casing copy follows the feature into it
+  road("road_major_casing", "casing", { attachesTo: ["road_major_dark", "road_minor"] }, "minor", { subtype: "pedestrian" }, [
+    [160, 100],
+    [200, 100],
+  ]),
+  road(
+    "road_minor",
+    "main",
+    {
+      key: "minor",
+      keyByValue: [
+        { property: "subtype", values: { pedestrian: "minor_pedestrian" } },
+        { property: "type", values: { track: "minor_track" } },
+      ],
+    },
+    "minor",
+    { subtype: "pedestrian" },
+    [
+      [160, 100],
+      [200, 100],
+    ],
+    { "line-color": asToString("rgba(250,240,200,1)") },
   ),
   // a stretch of the route on a bridge: the road under it is drawn by crossing
   // layers only, which a ground-level stretch beats — but they beat a bare band

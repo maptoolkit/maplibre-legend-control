@@ -16,6 +16,12 @@ export type LegendLayerTag = {
   key?: string;
   /** Feature property whose value is the entry key (`${group}:${properties[keyProperty]}`). */
   keyProperty?: string;
+  /**
+   * Property values the layer paints differently: a feature whose `property`
+   * has one of these values belongs to that value's key instead of the layer's
+   * own (`road_minor` → `road:minor_pedestrian`), first matching rule wins.
+   */
+  keyByValue?: Array<{ property: string; values: Record<string, string> }>;
   /** Supporting layers: the main layers whose entries this layer contributes to. */
   attachesTo?: string[];
   /** Standalone labels: one entry per key value, showing the most prominent named feature. */

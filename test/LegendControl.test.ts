@@ -116,6 +116,7 @@ describe("LegendControl", () => {
       "place:town",
       "place:village",
       "road:major_dark",
+      "road:minor_pedestrian",
       "road:minor",
       "road:hiking",
       "road:path",
