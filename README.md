@@ -162,8 +162,10 @@ fonts come from the style: a Maptoolkit style's legend manifest names the
 stylesheet that serves its typefaces (`fonts.css`, on `static.maptoolkit.net`),
 and the control links it into the page once — the browser then fetches only
 the faces the legend actually draws. Pass `fonts: "<url>"` for a stylesheet
-of your own, or `fonts: false` when the page already provides the fonts. Without
-any of these the browser falls back to its default sans-serif.
+of your own, or `fonts: false` when the page already provides the fonts. Until
+a face arrives (or if none does) the text shows in a generic family matching
+the typeface — serif for Alegreya or Epunda Slab, cursive for Lobster,
+monospace for SUSE Mono, sans-serif otherwise.
 
 ## Localization
 

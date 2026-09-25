@@ -30,5 +30,12 @@ describe("parseFontStack", () => {
   it("fontStackToCss adds a generic fallback", () => {
     expect(fontStackToCss(["Rosario Bold Italic"])).toEqual({ fontFamily: '"Rosario", sans-serif', fontWeight: "700", fontStyle: "italic" });
     expect(fontStackToCss(["Alegreya Regular"], "serif")?.fontFamily).toBe('"Alegreya", serif');
+    // the fallback matches the typeface: slabs and serifs stay serifs, scripts cursive, the mono monospace
+    expect(fontStackToCss(["Epunda Slab Semibold"])?.fontFamily).toBe('"Epunda Slab", serif');
+    expect(fontStackToCss(["Alegreya Small Caps Bold"])?.fontFamily).toBe('"Alegreya SC", serif');
+    expect(fontStackToCss(["Fraunces Soft Regular"])?.fontFamily).toBe('"Fraunces Soft", serif');
+    expect(fontStackToCss(["Lobster Regular"])?.fontFamily).toBe('"Lobster", cursive');
+    expect(fontStackToCss(["SUSE Mono Medium"])?.fontFamily).toBe('"SUSE Mono", monospace');
+    expect(fontStackToCss(["Ysabeau Small Caps Bold"])?.fontFamily).toBe('"Ysabeau SC", sans-serif');
   });
 });

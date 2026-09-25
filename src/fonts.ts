@@ -97,12 +97,33 @@ export function parseFontStack(stack: string[] | string | undefined): CssFont | 
   return { family, weight, style, smallCaps };
 }
 
-/** CSS declarations for a font stack, with a generic fallback family. */
-export function fontStackToCss(stack: string[] | string | undefined, fallback = "sans-serif"): { fontFamily: string; fontWeight: string; fontStyle: string } | undefined {
+/**
+ * Generic family of the typefaces the Maptoolkit glyph server offers that are
+ * not sans-serif — the fallback shown until the web font arrives (or if it
+ * never does), so a slab or a script never degrades to a sans.
+ */
+const GENERIC_FAMILY: Record<string, string> = {
+  Alegreya: "serif",
+  "Alegreya SC": "serif",
+  "Averia Serif Libre": "serif",
+  Bellefair: "serif",
+  "Epunda Slab": "serif",
+  "Fraunces Soft": "serif",
+  Sanchez: "serif",
+  "Berkshire Swash": "cursive",
+  Lobster: "cursive",
+  "SUSE Mono": "monospace",
+};
+
+/** CSS declarations for a font stack, with a generic fallback family (matching the typeface unless given). */
+export function fontStackToCss(
+  stack: string[] | string | undefined,
+  fallback?: string,
+): { fontFamily: string; fontWeight: string; fontStyle: string } | undefined {
   const parsed = parseFontStack(stack);
   if (!parsed) return undefined;
   return {
-    fontFamily: `"${parsed.family}", ${fallback}`,
+    fontFamily: `"${parsed.family}", ${fallback ?? GENERIC_FAMILY[parsed.family] ?? "sans-serif"}`,
     fontWeight: String(parsed.weight),
     fontStyle: parsed.style,
   };
