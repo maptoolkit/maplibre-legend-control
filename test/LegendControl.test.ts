@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { Map as MaplibreMap } from "maplibre-gl";
 import { LegendControl } from "../src/LegendControl";
@@ -82,6 +84,14 @@ describe("LegendControl", () => {
     button.click();
     expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(false);
     expect(button.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("keeps the button when the panel is hidden — only a control without a button hides entirely", () => {
+    // the stylesheet is not loaded in jsdom, so check the rules it must contain
+    const css = readFileSync(join(process.cwd(), "src/style.css"), "utf8");
+    expect(css).toContain(".maplibre-legend-control.maplibre-legend-control-collapsed .maplibre-legend-control-panel {");
+    expect(css).toContain(".maplibre-legend-control.maplibre-legend-control-collapsed:not(.maplibre-legend-control-with-toggle) {");
+    expect(css).not.toMatch(/\.maplibre-legend-control\.maplibre-legend-control-collapsed \{/); // would hide the button too
   });
 
   it("has no button with toggle: false — the host provides the trigger", () => {

@@ -125,9 +125,6 @@
 .maplibre-legend-control .maplibre-legend-control-entry {
   display: contents;
 }
-.maplibre-legend-control.maplibre-legend-control-collapsed {
-  display: none;
-}
 .maplibre-legend-control .maplibre-legend-control-empty {
   grid-column: 1 / -1;
   margin: var(--legend-control-space-3) 0 0;
