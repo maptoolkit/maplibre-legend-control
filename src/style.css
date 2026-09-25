@@ -210,11 +210,14 @@
 }
 .maplibre-legend-control .maplibre-legend-control-symbol-text {
   display: block;
-  /* wrap where the map wraps: at spaces and hyphens, never inside a word
-     (NIEDERÖSTERREICH stays whole and the panel widens for it) */
+  /* wrap where the map wraps: at spaces and hyphens, never inside a word. The
+     min-width beats the em max-width the control sets from `text-max-width`,
+     so a word longer than that widens the column instead of spilling out of it
+     (NIEDERÖSTERREICH stays whole and the panel widens for it). */
   white-space: pre-line;
   overflow-wrap: normal;
   word-break: normal;
+  min-width: min-content;
   text-align: center;
   color: var(--legend-control-color-fg-strong);
 }

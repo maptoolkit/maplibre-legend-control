@@ -95,6 +95,7 @@ describe("LegendControl", () => {
     // names wrap at spaces and hyphens like on the map, never inside a word
     expect(css).not.toMatch(/overflow-wrap:\s*(anywhere|break-word)/);
     expect(css).not.toMatch(/word-break:\s*break-(all|word)/);
+    expect(css).toMatch(/min-width:\s*min-content/); // a long word widens the column instead of spilling over it
   });
 
   it("has no button with toggle: false — the host provides the trigger", () => {
