@@ -182,7 +182,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  max-width: 100%;
+  /* a name that cannot be broken sizes the column (see -symbol-text): no cap
+     here, or the column stays narrow and the name runs over the column rule */
+  min-width: min-content;
 }
 .maplibre-legend-control .maplibre-legend-control-symbol-below {
   flex-direction: column;
@@ -202,6 +204,8 @@
 .maplibre-legend-control .maplibre-legend-control-symbol-overlay > * {
   grid-area: 1 / 1;
   justify-self: center;
+  /* both positioned, so the later one — the text — paints on top of the icon */
+  position: relative;
 }
 .maplibre-legend-control .maplibre-legend-control-symbol-icon {
   width: auto;
@@ -220,6 +224,12 @@
   min-width: min-content;
   text-align: center;
   color: var(--legend-control-color-fg-strong);
+}
+/* icon-text-fit: the icon is stretched behind the text and the padding keeps it clear */
+.maplibre-legend-control .maplibre-legend-control-symbol-fitted {
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  box-sizing: content-box;
 }
 
 /* swatches */

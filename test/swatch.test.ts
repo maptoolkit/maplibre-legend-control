@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
 import {
   createFillSwatch,
@@ -265,6 +265,43 @@ describe("fill shapes", () => {
     expect(FILL_SHAPES.geometric.every((d) => !/[CLQ]/.test(d))).toBe(true); // orthogonal: only H/V edges
     expect(FILL_SHAPES.regular.every((d) => !/[CQ]/.test(d))).toBe(true); // straight edges
     expect(FILL_SHAPES.organic.every((d) => /C/.test(d))).toBe(true); // curves
+  });
+});
+
+describe("shields (icon-text-fit)", () => {
+  const image = { data: { width: 4, height: 4, data: new Uint8ClampedArray(4 * 4 * 4).fill(255) }, pixelRatio: 1, sdf: true };
+  // jsdom has no 2D canvas; the recolouring itself is covered by the icon swatch tests
+  beforeEach(() => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h }),
+      putImageData: () => {},
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AAA");
+  });
+  afterEach(() => vi.restoreAllMocks());
+  const shield = {
+    id: "road_major_shield",
+    type: "symbol",
+    role: "shield",
+    order: 1,
+    paint: { "icon-color": "rgba(20,60,140,1)" },
+    layout: { "icon-image": "sdf:square", "icon-text-fit": "both", "icon-text-fit-padding": [2, 5, 4, 5] },
+  };
+
+  it("stretches the icon behind the text and pads it, instead of drawing a picture beside it", () => {
+    const box = createSymbolPreview({ name: "A22", text: { fontStack: ["Rosario Bold"], size: 12 }, icon: shield }, () => image);
+    const text = box.querySelector(".maplibre-legend-control-symbol-text") as HTMLElement;
+    expect(box.querySelector(".maplibre-legend-control-symbol-icon")).toBeNull(); // no icon of its own
+    expect(text.style.backgroundImage).toContain("data:image"); // the shield is the text's background
+    expect(text.style.padding).toBe("2px 5px 4px"); // top right bottom left, the bottom one shifts the number up
+    expect(text.classList.contains("maplibre-legend-control-symbol-fitted")).toBe(true);
+  });
+
+  it("keeps the plain icon where the layer does not fit it to the text", () => {
+    const plain = { ...shield, layout: { "icon-image": "sdf:square" } };
+    const box = createSymbolPreview({ name: "A22", text: { fontStack: ["Rosario Bold"], size: 12 }, icon: plain }, () => image);
+    expect(box.querySelector(".maplibre-legend-control-symbol-icon")).not.toBeNull();
+    expect((box.querySelector(".maplibre-legend-control-symbol-text") as HTMLElement).style.backgroundImage).toBe("");
   });
 });
 

@@ -108,7 +108,10 @@ evaluated paint and layout, and builds:
   then the one closest to the centre) as the map draws it: the name in the map's
   own font, size, colour and halo, and where there is an icon the icon with the
   name placed by `text-anchor`/`text-offset` — text below the icon, beside it,
-  or over it.
+  or over it. A shield (`icon-text-fit`) stretches its icon behind the name and
+  pads it by `icon-text-fit-padding`, so it grows with the number it carries and
+  an uneven padding shifts the number inside it, as on the map. Names wrap at
+  spaces and hyphens only; a longer one widens the column.
 
 Hairlines separate the two columns and the groups: a trace of the text colour,
 so they stay faint on whatever ground the style paints

@@ -476,8 +476,8 @@ export function createFillSwatch(layer: SwatchLayer, getImage?: GetImage, suppor
 }
 
 /** Sprite icon, SDF icons recolored with icon-color (+ halo); falls back to a neutral dot without image/canvas. */
-export function createIconSwatch(layer: SwatchLayer, getImage?: GetImage): HTMLElement {
-  const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-icon`);
+/** The layer's sprite icon as a canvas, recoloured like the map draws it (SDF colour + halo). */
+function iconCanvasOf(layer: SwatchLayer, getImage?: GetImage): { canvas: HTMLCanvasElement; ratio: number } | undefined {
   const name = valueToString(layer.layout["icon-image"]);
   const image = name && getImage ? getImage(name) : undefined;
   const canvas = image
@@ -487,6 +487,14 @@ export function createIconSwatch(layer: SwatchLayer, getImage?: GetImage): HTMLE
         haloWidth: num(layer.paint["icon-halo-width"], 0),
       })
     : undefined;
+  return canvas && image ? { canvas, ratio: image.pixelRatio || 1 } : undefined;
+}
+
+export function createIconSwatch(layer: SwatchLayer, getImage?: GetImage): HTMLElement {
+  const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-icon`);
+  const drawn = iconCanvasOf(layer, getImage);
+  const canvas = drawn?.canvas;
+  const image = drawn && { pixelRatio: drawn.ratio };
   if (canvas && image) {
     const ratio = image.pixelRatio || 1;
     const scale = num(layer.layout["icon-size"], 1);
@@ -585,21 +593,53 @@ export function textPlacement(text: TextStyle | undefined): "below" | "above" | 
  * any) and the name in the map font, arranged by anchor and offset. Used for
  * the left column, where the class entries show their swatch.
  */
+/**
+ * `icon-text-fit`: the map stretches the icon around the text box and pads it
+ * by `icon-text-fit-padding` ([top, right, bottom, left], scaled by
+ * `icon-size`). A road or hiking shield is exactly that — a square that grows
+ * with its number — so the icon becomes the text's stretched background
+ * instead of a picture of its own. An asymmetric padding shifts the text
+ * inside the shield, as on the map.
+ */
+function fitIconBehind(textEl: HTMLElement, icon: SwatchLayer, getImage?: GetImage): boolean {
+  const fit = valueToString(icon.layout["icon-text-fit"]);
+  if (!fit || fit === "none") return false;
+  // without a drawable canvas the caller falls back to the plain icon
+  const drawn = iconCanvasOf(icon, getImage);
+  if (!drawn) return false;
+  const scale = num(icon.layout["icon-size"], 1);
+  const [top = 0, right = 0, bottom = 0, left = 0] = (valueToNumbers(icon.layout["icon-text-fit-padding"]) ?? []).map((v) => v * scale);
+  textEl.classList.add(`${CLASS}-symbol-fitted`);
+  if (fit === "both" || fit === "width") textEl.style.padding = `${top}px ${right}px ${bottom}px ${left}px`;
+  else textEl.style.padding = `${top}px 0 ${bottom}px`;
+  textEl.style.backgroundImage = `url(${drawn.canvas.toDataURL()})`;
+  textEl.style.opacity = String(clamp(num(icon.paint["icon-opacity"], 1), 0, 1));
+  return true;
+}
+
 export function createSymbolPreview(entry: { name?: string; text?: TextStyle; icon?: SwatchLayer }, getImage?: GetImage): HTMLElement {
   const box = el("span", `${CLASS}-symbol`);
+
+  let textEl: HTMLElement | undefined;
+  if (entry.name) {
+    textEl = el("span", `${CLASS}-symbol-text`);
+    textEl.textContent = entry.name;
+    if (entry.text) applyTextStyle(textEl, entry.text);
+  }
+  // A shield: the icon is stretched behind the text, so it is not a picture of
+  // its own. Where that cannot be drawn, the plain icon beside the text stands in.
+  const fitted = Boolean(entry.icon && textEl) && fitIconBehind(textEl!, entry.icon!, getImage);
+
   const placement = textPlacement(entry.text);
-  box.classList.add(`${CLASS}-symbol-${entry.icon && entry.name ? placement : "single"}`);
+  box.classList.add(`${CLASS}-symbol-${entry.icon && entry.name && !fitted ? placement : "single"}`);
 
   let iconEl: HTMLElement | undefined;
-  if (entry.icon) {
+  if (entry.icon && !fitted) {
     iconEl = createIconSwatch(entry.icon, getImage);
     iconEl.classList.add(`${CLASS}-symbol-icon`);
     box.appendChild(iconEl);
   }
-  if (entry.name) {
-    const textEl = el("span", `${CLASS}-symbol-text`);
-    textEl.textContent = entry.name;
-    if (entry.text) applyTextStyle(textEl, entry.text);
+  if (textEl) {
     if (iconEl && placement !== "overlay") {
       // offset is measured from the icon centre to the text box edge, in ems
       const [ox, oy] = entry.text?.offset ?? [0, 0];

@@ -253,7 +253,12 @@ export const features: RenderedFeature[] = [
       type: "symbol",
       metadata: { [KEY]: { role: "shield", group: "road", instance: true, key: "major_shield" } },
       paint: {},
-      layout: { "icon-image": { name: "sdf:shield" }, "text-field": asToString("A22") },
+      layout: {
+        "icon-image": { name: "sdf:square" },
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [2, 5, 4, 5], // more at the bottom: the number sits high in the shield
+        "text-field": asToString("A22"),
+      },
     },
     properties: { type: "motorway", ref: "A22" },
     geometry: {
