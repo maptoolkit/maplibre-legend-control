@@ -105,7 +105,10 @@ evaluated paint and layout, and builds:
   the name placed by `text-anchor`/`text-offset` — text below the icon, beside
   it, or over it.
 
-Every row follows one rule: **left what the map shows, right the explanation** —
+Hairlines separate the two columns and the groups: a trace of the text colour,
+so they stay faint on whatever ground the style paints
+(`--legend-control-rule`). Every row follows one rule: **left what the map
+shows, right the explanation** —
 a stroke stack or fill for a class entry, the symbol itself for an instance
 entry; the manifest label (or the humanized key) on the right, right-aligned.
 The list is one grid across all groups, so the left column is as wide as the
