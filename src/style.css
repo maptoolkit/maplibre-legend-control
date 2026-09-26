@@ -260,6 +260,22 @@
 .maplibre-legend-control .maplibre-legend-control-symbol-on-fill svg {
   height: 100%;
 }
+/* the name is set along the line inside the SVG, which sizes the box itself: nothing to reach, nothing to stretch */
+.maplibre-legend-control .maplibre-legend-control-symbol-on-path {
+  padding: 0;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-on-path > .maplibre-legend-control-swatch {
+  position: relative;
+  inset: auto;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-on-path svg {
+  width: auto;
+}
+.maplibre-legend-control .maplibre-legend-control-text-on-path {
+  paint-order: stroke; /* the halo stroke below the glyphs */
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
 /* icon-text-fit: the icon is stretched behind the text and the padding keeps it clear */
 .maplibre-legend-control .maplibre-legend-control-symbol-fitted {
   background-repeat: no-repeat;

@@ -6,6 +6,8 @@ import {
   createSymbolOnSwatch,
   createSymbolPreview,
   fillShapeFamilyFor,
+  nameWidth,
+  pathMidTangent,
   FILL_SHAPES,
   lineShapeFamilyFor,
   LINE_SHAPES,
@@ -307,6 +309,124 @@ describe("a symbol on its feature's swatch", () => {
       .querySelector("path")!
       .getAttribute("d");
     expect(under).toBe(own);
+  });
+});
+
+describe("a name along its line", () => {
+  const river = { id: "water_waterway", type: "line", role: "main", order: 2, paint: { "line-color": "rgba(80,140,200,1)", "line-width": 2 }, layout: {} };
+  const label = { fontStack: ["Rosario Italic"], size: 12, color: "rgba(40,90,150,1)", haloColor: "rgba(255,255,255,1)", haloWidth: 1, alongLine: true };
+
+  it("sets a following name on a guide with the line's shape, centred, halo below the glyphs", () => {
+    const box = createSymbolOnSwatch({ name: "Donau", text: label, anchor: { swatch: [river], variant: 1 } });
+    expect(box.classList.contains("maplibre-legend-control-symbol-on-path")).toBe(true);
+    expect(box.querySelector(".maplibre-legend-control-symbol-text")).toBeNull(); // no HTML text over the line
+    const svg = box.querySelector("svg")!;
+    expect(svg.getAttribute("preserveAspectRatio")).toBeNull(); // glyphs are never stretched
+    const along = svg.querySelector("text > textPath")!;
+    expect(along.textContent).toBe("Donau");
+    expect(along.getAttribute("startOffset")).toBe("50%");
+    const guide = svg.querySelector(along.getAttribute("href")!)!;
+    expect(guide.getAttribute("d")).toBe(svg.querySelector("path.maplibre-legend-control-stroke")!.getAttribute("d")); // the very bend of the line
+    const text = svg.querySelector("text") as SVGElement;
+    expect(text.getAttribute("text-anchor")).toBe("middle");
+    expect(text.getAttribute("dominant-baseline")).toBe("central");
+    expect(text.style.fontFamily).toContain("Rosario");
+    expect(text.style.fontStyle).toBe("italic");
+    expect(text.getAttribute("fill")).toBe("rgba(40,90,150,1)");
+    expect(text.getAttribute("stroke")).toBe("rgba(255,255,255,1)");
+    expect(text.getAttribute("stroke-width")).toBe("2"); // the halo radius on both sides
+  });
+
+  it("widens the line to a long name plus the reach, stretching the bend but not the strokes", () => {
+    const box = createSymbolOnSwatch({ name: "Große Tulln", text: label, anchor: { swatch: [river], variant: 1 } });
+    const svg = box.querySelector("svg")!;
+    const width = Number(svg.getAttribute("width"));
+    expect(width).toBeGreaterThan(64);
+    expect(width).toBe(Math.ceil(nameWidth("Große Tulln", label) + 20)); // 10 px reach on each side
+    expect(svg.getAttribute("viewBox")).toBe(`0 0 ${width} 26`);
+    for (const path of svg.querySelectorAll("path")) {
+      expect(path.getAttribute("transform")).toMatch(/^scale\(\d+(\.\d+)? 1\)$/); // sideways only…
+      expect(path.getAttribute("vector-effect")).toBe("non-scaling-stroke"); // …and the strokes keep their width
+    }
+    // a short name leaves the standard box alone
+    const short = createSymbolOnSwatch({ name: "Inn", text: label, anchor: { swatch: [river], variant: 1 } }).querySelector("svg")!;
+    expect(short.getAttribute("width")).toBe("64");
+    expect(short.querySelector("path")!.getAttribute("transform")).toBeNull();
+  });
+
+  it("gives a tight bend up for a gentler one, as the map labels only its softer curves", () => {
+    const path = { ...river, id: "road_hiking" }; // tight family
+    const box = createSymbolOnSwatch({ name: "Nordalpenweg", text: label, anchor: { swatch: [path], variant: 0 } });
+    expect(box.querySelector(".maplibre-legend-control-swatch-line-medium")).not.toBeNull();
+    // the feature's own row keeps its tight bend
+    expect(createLineSwatch([path], 0).classList.contains("maplibre-legend-control-swatch-line-tight")).toBe(true);
+  });
+
+  it("shifts the name off the line by text-offset and keeps it on one line", () => {
+    const above = createSymbolOnSwatch({ name: "Kamp\nFluss", text: { ...label, offset: [0, -0.8] }, anchor: { swatch: [river], variant: 1 } });
+    const text = above.querySelector("text")!;
+    expect(text.getAttribute("dy")).toBe("-9.6"); // −0.8 em at 12 px, perpendicular to the path
+    expect(text.textContent).toBe("Kamp Fluss");
+  });
+
+  it("keeps a shield upright and a plain label straight over the line", () => {
+    const shieldText = { ...label, alongLine: false }; // text-rotation-alignment viewport
+    const icon = {
+      id: "road_major_shield",
+      type: "symbol",
+      role: "shield",
+      order: 5,
+      paint: {},
+      layout: { "icon-image": "sdf:square", "icon-text-fit": "both", "symbol-placement": "line" },
+    };
+    const shield = createSymbolOnSwatch({ name: "A22", text: shieldText, icon, anchor: { swatch: [river], variant: 1 } });
+    expect(shield.querySelector("textPath")).toBeNull();
+    expect(shield.querySelector(".maplibre-legend-control-symbol-text")?.textContent).toBe("A22");
+    const point = createSymbolOnSwatch({ name: "Knoten Tulln", text: { ...label, alongLine: false }, anchor: { swatch: [river], variant: 1 } });
+    expect(point.querySelector("textPath")).toBeNull();
+  });
+
+  it("turns an arrow into the direction of the line at its middle", () => {
+    const arrow = {
+      id: "road_minor_oneway_arrows",
+      type: "symbol",
+      role: "arrows",
+      order: 6,
+      paint: {},
+      layout: { "icon-image": "sdf:arrow", "symbol-placement": "line" },
+    };
+    const street = { ...river, id: "road_minor" }; // medium family, variant 0: "M 2 17 C 17.6 8, 34.4 18, 62 9"
+    const box = createSymbolOnSwatch({ icon: arrow, anchor: { swatch: [street], variant: 0 } });
+    const iconEl = box.querySelector(".maplibre-legend-control-symbol-icon") as HTMLElement;
+    const d = box.querySelector("path")!.getAttribute("d")!;
+    expect(iconEl.style.transform).toBe(`rotate(${Math.round(pathMidTangent(d) * 100) / 100}deg)`);
+    // a shield's icon keeps viewport alignment: not turned
+    const upright = { ...arrow, layout: { ...arrow.layout, "icon-rotation-alignment": "viewport" } };
+    expect(
+      (createSymbolOnSwatch({ icon: upright, anchor: { swatch: [street], variant: 0 } }).querySelector(".maplibre-legend-control-symbol-icon") as HTMLElement)
+        .style.transform,
+    ).toBe("");
+  });
+});
+
+describe("pathMidTangent", () => {
+  it("reads the direction at half the length", () => {
+    expect(pathMidTangent("M 2 13 H 62")).toBe(0);
+    expect(pathMidTangent("M 2 17 L 62 9")).toBeCloseTo((Math.atan2(-8, 60) * 180) / Math.PI, 5);
+    expect(pathMidTangent("M 2 16 L 20 16 L 34 9 L 62 9")).toBeCloseTo((Math.atan2(-7, 14) * 180) / Math.PI, 5); // the climb sits in the middle
+    // an S-bend passes its inflection in the middle, nearly level: B'(0.5) = (57.6, 1.5) for this shape
+    expect(Math.abs(pathMidTangent("M 2 17 C 17.6 8, 34.4 18, 62 9"))).toBeLessThan(3);
+    // a plain arc is steepest in the middle
+    expect(pathMidTangent("M 2 20 C 20 20, 44 6, 62 6")).toBeCloseTo((Math.atan2(-14 * 1.5, 60 * 0.75 + 24 * 0.75) * 180) / Math.PI, 0);
+  });
+});
+
+describe("nameWidth", () => {
+  it("estimates without a canvas and adds the letter spacing", () => {
+    const plain = nameWidth("Donau", { fontStack: ["Rosario Regular"], size: 10 });
+    expect(plain).toBeGreaterThan(0);
+    expect(nameWidth("Donau", { fontStack: ["Rosario Regular"], size: 10, letterSpacing: 0.1 })).toBeCloseTo(plain + 0.1 * 10 * 4, 5);
+    expect(nameWidth("Donau", { fontStack: ["Rosario Regular"], size: 10, transform: "uppercase" })).toBeGreaterThanOrEqual(plain); // measured as shown
   });
 });
 

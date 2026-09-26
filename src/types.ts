@@ -116,6 +116,12 @@ export type TextStyle = {
   maxWidth?: number;
   /** `text-line-height` as a factor. */
   lineHeight?: number;
+  /**
+   * The label follows its line on the map: `symbol-placement` line or
+   * line-center with `text-rotation-alignment` map (or auto). A shield keeps
+   * viewport alignment and stays upright.
+   */
+  alongLine?: boolean;
 };
 
 export type LegendEntry = {

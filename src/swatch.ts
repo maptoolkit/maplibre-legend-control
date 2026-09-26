@@ -23,6 +23,7 @@ const MAX_ICON = 24;
 
 const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const round2 = (v: number) => Math.round(v * 100) / 100; // keep attributes free of float noise
 
 function el(tag: string, className: string): HTMLElement {
   const e = document.createElement(tag);
@@ -208,17 +209,17 @@ let maskSeq = 0;
  * the gap. The map shows what lies between them — a translucent road over the
  * hiking band beneath it — so the gap must not be painted in the casing colour.
  */
-function gapMask(path: SVGElement, d: string, stroke: Stroke, scale: number): SVGElement {
+function gapMask(path: SVGElement, d: string, stroke: Stroke, scale: number, scaleX = 1, width = SWATCH_W): SVGElement {
   const id = `${CLASS}-gap-${++maskSeq}`;
   const mask = document.createElementNS(SVG_NS, "mask");
   mask.setAttribute("id", id);
   mask.setAttribute("maskUnits", "userSpaceOnUse");
   mask.setAttribute("x", "0");
   mask.setAttribute("y", "0");
-  mask.setAttribute("width", String(SWATCH_W));
+  mask.setAttribute("width", String(width));
   mask.setAttribute("height", String(SWATCH_H));
   const keep = document.createElementNS(SVG_NS, "rect");
-  keep.setAttribute("width", String(SWATCH_W));
+  keep.setAttribute("width", String(width));
   keep.setAttribute("height", String(SWATCH_H));
   keep.setAttribute("fill", "white");
   const cut = document.createElementNS(SVG_NS, "path");
@@ -229,6 +230,7 @@ function gapMask(path: SVGElement, d: string, stroke: Stroke, scale: number): SV
   cut.setAttribute("stroke-width", String(stroke.gap * scale));
   cut.setAttribute("stroke-linecap", "butt");
   cut.setAttribute("stroke-linejoin", stroke.join);
+  stretchX(cut, scaleX);
   mask.append(keep, cut);
   path.setAttribute("mask", `url(#${id})`);
   return mask;
@@ -241,14 +243,25 @@ function gapMask(path: SVGElement, d: string, stroke: Stroke, scale: number): SV
  * painted. All strokes are scaled together when the widest would not fit, so
  * casing and main keep their ratio at every zoom.
  */
-export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElement {
+type LineSwatchOptions = {
+  /** Wider than the standard box: the bend is stretched to this width, the strokes keep their width. */
+  width?: number;
+  /** A name is set along the line: the tighter families give way to a gentler bend, as the map labels only its softer curves. */
+  readable?: boolean;
+};
+type LineSwatchParts = { box: HTMLElement; svg?: SVGSVGElement; d: string; scaleX: number; width: number };
+
+function lineSwatchParts(layers: SwatchLayer[], variant = 0, options: LineSwatchOptions = {}): LineSwatchParts {
   const main = layers.find((l) => l.role === "main") ?? layers[0];
-  const family = main ? lineShapeFamilyFor(main.id) : "medium";
+  let family = main ? lineShapeFamilyFor(main.id) : "medium";
+  if (options.readable) family = family === "tight" ? "medium" : family === "geometric" ? "flat" : family;
   const box = el("span", `${CLASS}-swatch ${CLASS}-swatch-line ${CLASS}-swatch-line-${family}`);
-  const strokes = layers.map(strokeOf).filter((s): s is Stroke => Boolean(s));
-  if (!strokes.length) return box;
   const shapes = LINE_SHAPES[family];
   const d = shapes[Math.abs(Math.trunc(variant)) % shapes.length];
+  const width = Math.max(SWATCH_W, Math.ceil(options.width ?? SWATCH_W));
+  const scaleX = width / SWATCH_W;
+  const strokes = layers.map(strokeOf).filter((s): s is Stroke => Boolean(s));
+  if (!strokes.length) return { box, d, scaleX, width };
 
   // A blurred stroke reaches its blur radius beyond its own width on each side
   // (a piste casing at z17 is 49 px wide with a 12 px blur), so stroke and blur
@@ -262,8 +275,8 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
   const scale = Math.min(1, ...strokes.map(fit));
 
   const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", `0 0 ${SWATCH_W} ${SWATCH_H}`);
-  svg.setAttribute("width", String(SWATCH_W));
+  svg.setAttribute("viewBox", `0 0 ${width} ${SWATCH_H}`);
+  svg.setAttribute("width", String(width));
   svg.setAttribute("height", String(SWATCH_H));
   svg.setAttribute("aria-hidden", "true");
   for (const stroke of strokes) {
@@ -281,7 +294,6 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
     path.setAttribute("stroke-linejoin", stroke.join);
     if (stroke.opacity < 1) path.setAttribute("stroke-opacity", String(stroke.opacity));
     if (stroke.dash) {
-      const round2 = (v: number) => Math.round(v * 100) / 100; // keep attributes free of float noise
       const dash = stroke.dash.map((d) => round2(Math.max(0.5, d * scale)));
       path.setAttribute("stroke-dasharray", dash.join(" "));
       // start inside the gap so the first dash sits inset from the curve's end
@@ -290,11 +302,23 @@ export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElemen
       path.setAttribute("stroke-dashoffset", String(round2(-(on + off / 2))));
     }
     if (stroke.blur > 0) path.style.filter = `blur(${Math.min(stroke.blur * scale, MAX_BLUR)}px)`;
-    if (stroke.gap > 0) svg.appendChild(gapMask(path, d, stroke, scale));
+    stretchX(path, scaleX);
+    if (stroke.gap > 0) svg.appendChild(gapMask(path, d, stroke, scale, scaleX, width));
     svg.appendChild(path);
   }
   box.appendChild(svg);
-  return box;
+  return { box, svg, d, scaleX, width };
+}
+
+/** Stretch a shape sideways only: the geometry follows, every stroke keeps its width. */
+function stretchX(shape: SVGElement, scaleX: number): void {
+  if (scaleX === 1) return;
+  shape.setAttribute("transform", `scale(${round2(scaleX)} 1)`);
+  shape.setAttribute("vector-effect", "non-scaling-stroke");
+}
+
+export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElement {
+  return lineSwatchParts(layers, variant).box;
 }
 
 /** How a fill swatch is shaped — by what the layer depicts. */
@@ -531,11 +555,153 @@ export function swatchVariantFor(key: string): number {
 
 /** Pick the swatch shape from the entry's main layer type and hand the stack to the matching builder. */
 /**
+ * Whether a symbol layer follows its line on the map: placed along the line
+ * with map rotation (the default `auto` for a line placement). A shield sets
+ * viewport alignment and stays upright.
+ */
+function followsLine(layout: Record<string, unknown>, kind: "text" | "icon"): boolean {
+  const placement = valueToString(layout["symbol-placement"]) ?? "point";
+  return placement !== "point" && (valueToString(layout[`${kind}-rotation-alignment`]) ?? "auto") !== "viewport";
+}
+
+let measure: CanvasRenderingContext2D | null | undefined;
+
+/**
+ * How wide a name is set in its map font: measured on a canvas (a rough
+ * estimate where there is none), letter spacing added. Before the webfont has
+ * loaded the fallback font is measured — the control renders again once the
+ * fonts are in.
+ */
+export function nameWidth(name: string, text: TextStyle): number {
+  const size = clamp(text.size ?? 14, 8, 22);
+  const shown = text.transform === "uppercase" ? name.toUpperCase() : text.transform === "lowercase" ? name.toLowerCase() : name;
+  if (measure === undefined) measure = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+  let width: number | undefined;
+  if (measure && typeof measure.measureText === "function") {
+    const css = fontStackToCss(text.fontStack);
+    measure.font = `${css?.fontStyle ?? "normal"} ${css?.fontWeight ?? "400"} ${size}px ${css?.fontFamily ?? "sans-serif"}`;
+    width = measure.measureText(shown).width;
+  }
+  if (width === undefined || !Number.isFinite(width) || width <= 0) width = shown.length * size * 0.6;
+  return width + (text.letterSpacing ?? 0) * size * Math.max(0, shown.length - 1);
+}
+
+/**
+ * The direction of a swatch path at its middle, in degrees (clockwise, screen
+ * coordinates) — where a symbol placed along the line is turned to on the
+ * map. Handles the commands the shapes use (M, H, V, L, C, S).
+ */
+export function pathMidTangent(d: string): number {
+  const points: Array<[number, number]> = [];
+  let cur: [number, number] = [0, 0];
+  let lastCtrl: [number, number] | undefined;
+  const cubic = (p0: [number, number], p1: [number, number], p2: [number, number], p3: [number, number]) => {
+    for (let i = 1; i <= 16; i++) {
+      const t = i / 16,
+        u = 1 - t;
+      points.push([
+        u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+        u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
+      ]);
+    }
+    lastCtrl = p2;
+    cur = p3;
+  };
+  const lineTo = (p: [number, number]) => {
+    cur = p;
+    points.push(p);
+    lastCtrl = undefined;
+  };
+  for (const [, cmd, args] of d.matchAll(/([MHVLCS])([^MHVLCS]*)/g)) {
+    const n = args
+      .trim()
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .map(Number);
+    if (cmd === "M") lineTo([n[0], n[1]]);
+    else if (cmd === "H") lineTo([n[0], cur[1]]);
+    else if (cmd === "V") lineTo([cur[0], n[0]]);
+    else if (cmd === "L") for (let i = 0; i + 1 < n.length; i += 2) lineTo([n[i], n[i + 1]]);
+    else if (cmd === "C") for (let i = 0; i + 5 < n.length; i += 6) cubic(cur, [n[i], n[i + 1]], [n[i + 2], n[i + 3]], [n[i + 4], n[i + 5]]);
+    else if (cmd === "S")
+      for (let i = 0; i + 3 < n.length; i += 4) {
+        const p1: [number, number] = lastCtrl ? [2 * cur[0] - lastCtrl[0], 2 * cur[1] - lastCtrl[1]] : cur;
+        cubic(cur, p1, [n[i], n[i + 1]], [n[i + 2], n[i + 3]]);
+      }
+  }
+  if (points.length < 2) return 0;
+  const lengths = points.slice(1).map((p, i) => Math.hypot(p[0] - points[i][0], p[1] - points[i][1]));
+  const half = lengths.reduce((a, b) => a + b, 0) / 2;
+  let run = 0;
+  for (let i = 0; i < lengths.length; i++) {
+    run += lengths[i];
+    if (run >= half) return (Math.atan2(points[i + 1][1] - points[i][1], points[i + 1][0] - points[i][0]) * 180) / Math.PI;
+  }
+  return 0;
+}
+
+/** Font, size, colour, halo, spacing and case of a map label, on an SVG text element. Returns the size. */
+function applySvgTextStyle(target: SVGElement, text: TextStyle): number {
+  const css = fontStackToCss(text.fontStack);
+  if (css) {
+    target.style.fontFamily = css.fontFamily;
+    target.style.fontWeight = css.fontWeight;
+    target.style.fontStyle = css.fontStyle;
+  }
+  const size = clamp(text.size ?? 14, 8, 22);
+  target.style.fontSize = `${size}px`;
+  target.setAttribute("fill", text.color ?? "currentColor");
+  if (text.transform && text.transform !== "none") target.style.textTransform = text.transform;
+  if (text.letterSpacing) target.style.letterSpacing = `${text.letterSpacing}em`;
+  if (text.haloColor && text.haloWidth) {
+    // the halo is a stroke around the glyphs, painted below the fill (see the stylesheet's paint-order)
+    target.setAttribute("stroke", text.haloColor);
+    target.setAttribute("stroke-width", String(round2(2 * Math.min(text.haloWidth, 2.5))));
+  }
+  return size;
+}
+
+let guideSeq = 0;
+
+/**
+ * The name set along the swatch's line, as the map sets it: on an invisible
+ * guide with the (stretched) shape, centred, glyphs turning with the bend,
+ * `text-offset` as a shift off the line.
+ */
+function setNameAlongLine(parts: LineSwatchParts, name: string, text: TextStyle): void {
+  if (!parts.svg) return;
+  const id = `${CLASS}-guide-${++guideSeq}`;
+  const guide = document.createElementNS(SVG_NS, "path");
+  guide.setAttribute("id", id);
+  guide.setAttribute("d", parts.d);
+  guide.setAttribute("fill", "none");
+  stretchX(guide, parts.scaleX);
+  const textEl = document.createElementNS(SVG_NS, "text");
+  textEl.setAttribute("class", `${CLASS}-text-on-path`);
+  textEl.setAttribute("text-anchor", "middle");
+  textEl.setAttribute("dominant-baseline", "central");
+  const size = applySvgTextStyle(textEl, text);
+  const [, oy = 0] = text.offset ?? [0, 0];
+  if (oy) textEl.setAttribute("dy", String(round2(oy * size)));
+  const along = document.createElementNS(SVG_NS, "textPath");
+  along.setAttribute("href", `#${id}`);
+  along.setAttribute("startOffset", "50%");
+  along.textContent = name.replace(/\s*\n\s*/g, " "); // one line along the way
+  textEl.appendChild(along);
+  parts.svg.append(guide, textEl);
+}
+
+/** How far a feature reaches beyond the symbol on it, in px — the stylesheet's `--legend-control-symbol-reach`. */
+const SYMBOL_REACH = 10;
+
+/**
  * A symbol on the feature it sits on: the anchor entry's swatch under the
  * symbol — a shield on its route, a river name on its waterway. The swatch
  * stretches to a name wider than it (the shape only, every stroke keeps its
  * width) and reaches a little beyond it: a line runs on past both ends of the
- * name, a surface encloses it on every side.
+ * name, a surface encloses it on every side. A name the map sets along its
+ * line follows the bend here too, an arrow turns into the line's direction; a
+ * shield stays upright, as on the map.
  */
 export function createSymbolOnSwatch(
   entry: { name?: string; text?: TextStyle; icon?: SwatchLayer; anchor: { swatch: SwatchLayer[]; variant: number } },
@@ -543,8 +709,19 @@ export function createSymbolOnSwatch(
 ): HTMLElement {
   const box = el("span", `${CLASS}-symbol-on`);
   const main = entry.anchor.swatch.find((l) => l.role === "main") ?? entry.anchor.swatch[0];
+  const isFill = main?.type === "fill" || main?.type === "fill-extrusion";
   // a surface encloses the name, a line runs on past its ends (see the stylesheet)
-  box.classList.add(`${CLASS}-symbol-on-${main?.type === "fill" || main?.type === "fill-extrusion" ? "fill" : "line"}`);
+  box.classList.add(`${CLASS}-symbol-on-${isFill ? "fill" : "line"}`);
+
+  if (main?.type === "line" && entry.name && entry.text?.alongLine && !entry.icon) {
+    // set along the line inside the SVG, which sizes itself to the name plus the reach
+    const parts = lineSwatchParts(entry.anchor.swatch, entry.anchor.variant, { width: nameWidth(entry.name, entry.text) + 2 * SYMBOL_REACH, readable: true });
+    setNameAlongLine(parts, entry.name, entry.text);
+    box.classList.add(`${CLASS}-symbol-on-path`);
+    box.appendChild(parts.box);
+    return box;
+  }
+
   const base = createSwatch(entry.anchor.swatch, getImage, entry.anchor.variant);
   const svg = base.querySelector("svg");
   if (svg) {
@@ -552,7 +729,14 @@ export function createSymbolOnSwatch(
     for (const shape of svg.querySelectorAll("path, rect, circle, ellipse")) shape.setAttribute("vector-effect", "non-scaling-stroke");
   }
   box.appendChild(base);
-  box.appendChild(createSymbolPreview(entry, getImage));
+  const symbol = createSymbolPreview(entry, getImage);
+  if (entry.icon && main?.type === "line" && followsLine(entry.icon.layout, "icon")) {
+    // a one-way arrow points along its street
+    const d = svg?.querySelector("path")?.getAttribute("d");
+    const icon = symbol.querySelector<HTMLElement>(`.${CLASS}-symbol-icon`);
+    if (d && icon) icon.style.transform = `rotate(${round2(pathMidTangent(d))}deg)`;
+  }
+  box.appendChild(symbol);
   return box;
 }
 

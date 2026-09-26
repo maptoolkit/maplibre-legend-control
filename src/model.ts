@@ -175,7 +175,10 @@ function textStyleOf(feature: RenderedFeature): TextStyle {
   const offset = valueToNumbers(layout["text-offset"]);
   // text-variable-anchor lists alternatives the collision pass chooses from; the first one is the preferred placement
   const variable = Array.isArray(layout["text-variable-anchor"]) ? valueToString((layout["text-variable-anchor"] as unknown[])[0]) : undefined;
+  const placement = valueToString(layout["symbol-placement"]) ?? "point";
+  const rotation = valueToString(layout["text-rotation-alignment"]) ?? "auto";
   return {
+    alongLine: placement !== "point" && rotation !== "viewport",
     fontStack,
     size: num(layout["text-size"]),
     color: valueToString(paint["text-color"]),

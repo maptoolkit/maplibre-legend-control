@@ -145,6 +145,8 @@ export class LegendControl implements IControl {
   private _model?: LegendModel;
   private _dirty = true;
   private _onIdle = () => this._scheduleUpdate();
+  /** a name set along its line was measured in the fallback font until the webfont arrived */
+  private _onFontsLoaded = () => this._scheduleUpdate();
   private _onResize = () => this._fitToMap();
 
   /**
@@ -205,6 +207,7 @@ export class LegendControl implements IControl {
 
     map.on("idle", this._onIdle);
     map.on("resize", this._onResize);
+    document.fonts?.addEventListener("loadingdone", this._onFontsLoaded);
     this._fitToMap();
     this._scheduleUpdate();
 
@@ -216,6 +219,7 @@ export class LegendControl implements IControl {
     this._timer = undefined;
     this._map?.off("idle", this._onIdle);
     this._map?.off("resize", this._onResize);
+    document.fonts?.removeEventListener("loadingdone", this._onFontsLoaded);
     this._raise(false);
     if (this._container?.parentNode) {
       this._container.parentNode.removeChild(this._container);

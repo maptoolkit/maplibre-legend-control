@@ -379,6 +379,19 @@ describe("a symbol on its feature", () => {
     expect(find([street, zone, arrow], "road:minor_oneway_arrows")?.anchor?.key).toBe("road:minor_pedestrian");
   });
 
+  it("knows whether a label follows its line on the map", () => {
+    const along = label("road_hiking_label", { role: "label", key: "hiking_label", anchors: ["road_path"] }, {}, 3);
+    along.layer.layout = { "text-field": "Nordalpenweg", "symbol-placement": "line" }; // rotation auto → map
+    const upright = label("road_major_shield", { role: "shield", key: "major_shield", anchors: ["road_path"] }, {}, 4);
+    upright.layer.layout = { "text-field": "A22", "symbol-placement": "line", "text-rotation-alignment": "viewport" };
+    const point = label("road_major_junction_label", { role: "label", key: "major_junction_label", anchors: ["road_path"] }, {}, 5);
+    point.layer.layout = { "text-field": "Tulln" };
+    const rows = model([along, upright, point]).groups.flatMap((g) => g.entries);
+    expect(rows.find((e) => e.key === "road:hiking_label")?.text?.alongLine).toBe(true);
+    expect(rows.find((e) => e.key === "road:major_shield")?.text?.alongLine).toBe(false);
+    expect(rows.find((e) => e.key === "road:major_junction_label")?.text?.alongLine).toBe(false);
+  });
+
   it("draws the symbol bare when none of its anchors is in view", () => {
     const grade = label("road_path_scale_label", { role: "label", key: "path_scale_label", anchors: ["road_path"] }, {}, 2);
     const row = find([grade], "road:path_scale_label");

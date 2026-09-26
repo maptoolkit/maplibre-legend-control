@@ -120,9 +120,17 @@ evaluated paint and layout, and builds:
   its shape, stretched under a wider name with the strokes keeping their
   width, and reaching a little beyond it (`--legend-control-symbol-reach`,
   `--legend-control-symbol-reach-y`): a line runs on past both ends of the
-  name, a surface encloses it on every side. Of several anchors in view the
-  one that drew the same feature wins, then the entry the symbol's own values
-  pick, then the first; with none in view the symbol stands alone.
+  name, a surface encloses it on every side. A name the map sets along its
+  line (`symbol-placement` line with map rotation — a river's name, a route's)
+  follows the bend here too, as SVG text on the line's own path, centred, in
+  the map font with its halo, shifted off the line by `text-offset`; the line
+  is widened to the measured name plus the reach, the tighter bend families
+  give way to a gentler one, as the map labels only its softer curves. The
+  name is measured again once the webfonts have loaded. A one-way arrow turns
+  into the line's direction, a shield (viewport alignment) stays upright. Of
+  several anchors in view the one that drew the same feature wins, then the
+  entry the symbol's own values pick, then the first; with none in view the
+  symbol stands alone.
 
 Hairlines separate the two columns and the groups: a trace of the text colour,
 so they stay faint on whatever ground the style paints
