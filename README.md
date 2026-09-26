@@ -113,7 +113,14 @@ evaluated paint and layout, and builds:
   its `content` box and grows only in the middle (`border-image`), a plain one
   is stretched as a whole. It therefore grows with the number it carries, and an
   uneven padding shifts the number inside it, as on the map. Names wrap at
-  spaces, hyphens and slashes only; a longer one widens the column.
+  spaces, hyphens and slashes only; a longer one widens the column. A symbol
+  whose tag names the main layers it sits on (`anchors`: a shield on its
+  route, a river's name on its waterway) is drawn on that feature's swatch
+  when the feature is in view — the very stack of the feature's own row, in
+  its shape, stretched under a wider name with the strokes keeping their
+  width — preferring the anchor that drew the same feature, then the entry the
+  symbol's own values pick, then the first in view; with none in view the
+  symbol stands alone.
 
 Hairlines separate the two columns and the groups: a trace of the text colour,
 so they stay faint on whatever ground the style paints

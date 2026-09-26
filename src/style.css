@@ -225,6 +225,24 @@
   text-align: center;
   color: var(--legend-control-color-fg-strong);
 }
+/* a symbol on the feature it sits on: the feature's swatch stretched under it */
+.maplibre-legend-control .maplibre-legend-control-symbol-on {
+  display: inline-grid;
+  align-items: center;
+  justify-items: center;
+  min-width: var(--legend-control-swatch-width);
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-on > * {
+  grid-area: 1 / 1;
+  position: relative; /* both positioned: the symbol, later in the DOM, paints on top */
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-on > .maplibre-legend-control-swatch {
+  width: 100%;
+  justify-self: stretch;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-on svg {
+  width: 100%;
+}
 /* icon-text-fit: the icon is stretched behind the text and the padding keeps it clear */
 .maplibre-legend-control .maplibre-legend-control-symbol-fitted {
   background-repeat: no-repeat;

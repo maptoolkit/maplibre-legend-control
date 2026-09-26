@@ -530,6 +530,28 @@ export function swatchVariantFor(key: string): number {
 }
 
 /** Pick the swatch shape from the entry's main layer type and hand the stack to the matching builder. */
+/**
+ * A symbol on the feature it sits on: the anchor entry's swatch under the
+ * symbol — a shield on its route, a river name on its waterway. The swatch
+ * stretches to a name wider than it (the shape only, every stroke keeps its
+ * width), so the line always runs the whole way under the name.
+ */
+export function createSymbolOnSwatch(
+  entry: { name?: string; text?: TextStyle; icon?: SwatchLayer; anchor: { swatch: SwatchLayer[]; variant: number } },
+  getImage?: GetImage,
+): HTMLElement {
+  const box = el("span", `${CLASS}-symbol-on`);
+  const base = createSwatch(entry.anchor.swatch, getImage, entry.anchor.variant);
+  const svg = base.querySelector("svg");
+  if (svg) {
+    svg.setAttribute("preserveAspectRatio", "none");
+    for (const shape of svg.querySelectorAll("path, rect, circle, ellipse")) shape.setAttribute("vector-effect", "non-scaling-stroke");
+  }
+  box.appendChild(base);
+  box.appendChild(createSymbolPreview(entry, getImage));
+  return box;
+}
+
 export function createSwatch(layers: SwatchLayer[], getImage?: GetImage, variant = 0): HTMLElement {
   const main = layers.find((l) => l.role === "main") ?? layers[0];
   if (!main) return el("span", `${CLASS}-swatch ${CLASS}-swatch-empty`);

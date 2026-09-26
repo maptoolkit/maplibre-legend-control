@@ -1,7 +1,7 @@
 import type { Map, IControl, ControlPosition } from "maplibre-gl";
 import { buildLegendModel, featureIdentity, valueToString } from "./model";
-import { createSwatch, createSymbolPreview, type GetImage } from "./swatch";
-import { LEGEND_METADATA_KEY, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
+import { createSwatch, createSymbolOnSwatch, createSymbolPreview, type GetImage } from "./swatch";
+import { LEGEND_METADATA_KEY, type LegendEntry, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
 /**
  * Options for configuring the {@link LegendControl}.
@@ -126,6 +126,12 @@ function linkStylesheet(href: string | false | undefined): void {
   link.rel = "stylesheet";
   link.href = href;
   document.head.appendChild(link);
+}
+
+/** An instance row's visual: the symbol on its feature's swatch when that feature is in view, else the symbol alone. */
+function symbolOf(entry: LegendEntry, getImage?: GetImage): HTMLElement {
+  const { anchor } = entry;
+  return anchor ? createSymbolOnSwatch({ name: entry.name, text: entry.text, icon: entry.icon, anchor }, getImage) : createSymbolPreview(entry, getImage);
 }
 
 export class LegendControl implements IControl {
@@ -425,7 +431,7 @@ export class LegendControl implements IControl {
         // (a peak keeps its elevation left-aligned under the name).
         const visual = document.createElement("span");
         visual.classList.add(`${CLASS}-visual`);
-        visual.appendChild(entry.kind === "instance" ? createSymbolPreview(entry, getImage) : createSwatch(entry.swatch, getImage, entry.variant));
+        visual.appendChild(entry.kind === "instance" ? symbolOf(entry, getImage) : createSwatch(entry.swatch, getImage, entry.variant));
         li.appendChild(visual);
 
         const label = document.createElement("span");

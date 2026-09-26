@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildLegendModel, geometryAnchor, humanize, pickLabel, valueToNumbers, valueToString } from "../src/model";
+import type { RenderedFeature } from "../src/types";
 import { swatchVariantFor } from "../src/swatch";
 import { features, layerOrder, manifest, queryFixtures, viewport } from "./fixtures";
 
@@ -273,5 +274,78 @@ describe("helpers", () => {
       }),
     ).toEqual([3, 3]);
     expect(geometryAnchor(null)).toBeUndefined();
+  });
+});
+
+describe("a symbol on its feature", () => {
+  const KEY = "maptoolkit:legend";
+  const line = (id: string, tag: Record<string, unknown>, props: Record<string, unknown>, featureId: number, x = 100): RenderedFeature => ({
+    id: featureId,
+    layer: { id, type: "line", metadata: { [KEY]: { group: "road", ...tag } }, paint: { "line-color": "rgba(90,90,90,1)", "line-width": 2 }, layout: {} },
+    properties: props,
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [x, 150],
+        [x + 60, 150],
+      ],
+    },
+  });
+  const label = (id: string, tag: Record<string, unknown>, props: Record<string, unknown>, featureId: number): RenderedFeature => ({
+    ...line(id, { ...tag, instance: true }, props, featureId, 180),
+    layer: { id, type: "symbol", metadata: { [KEY]: { group: "road", instance: true, ...tag } }, paint: {}, layout: { "text-field": "T4" } },
+  });
+  const order = new Map([
+    ["road_path", 1],
+    ["road_path_mountain", 2],
+    ["road_minor", 3],
+    ["road_path_scale_label", 9],
+    ["road_minor_oneway_arrows", 10],
+  ]);
+  const model = (features: RenderedFeature[]) => buildLegendModel({ features, manifest: {}, layerOrder: order, language: "de", viewport });
+  const find = (features: RenderedFeature[], key: string) =>
+    model(features)
+      .groups.flatMap((g) => g.entries)
+      .find((e) => e.key === key);
+
+  it("shows the shield of the fixtures on the motorway it names, with that row's own shape", () => {
+    const all = buildLegendModel({ features, manifest, layerOrder, language: "de", viewport, isFullyVisible: fullyVisible() });
+    const rows = all.groups.flatMap((g) => g.entries);
+    const shield = rows.find((e) => e.key === "road:major_shield")!;
+    const motorway = rows.find((e) => e.key === "road:major_dark")!;
+    expect(shield.anchor?.key).toBe("road:major_dark");
+    expect(shield.anchor?.swatch).toBe(motorway.swatch); // the very stack, casing and blur included
+    expect(shield.anchor?.variant).toBe(motorway.variant);
+  });
+
+  it("prefers the anchor that drew the very same feature over the first one in view", () => {
+    const path = line("road_path", { role: "main", key: "path" }, { type: "path" }, 1);
+    const mountain = line("road_path_mountain", { role: "main", key: "path_mountain" }, { type: "path", subtype: "mountain" }, 2);
+    // the grade label is drawn from the mountain path's own feature (id 2)
+    const grade = label(
+      "road_path_scale_label",
+      { role: "label", key: "path_scale_label", anchors: ["road_path", "road_path_mountain"] },
+      { sac_scale: "T4" },
+      2,
+    );
+    expect(find([path, mountain, grade], "road:path_scale_label")?.anchor?.key).toBe("road:path_mountain");
+    // unrelated feature: the first anchor in view
+    const other = { ...grade, id: 7 };
+    expect(find([path, mountain, other], "road:path_scale_label")?.anchor?.key).toBe("road:path");
+  });
+
+  it("lets the symbol's own values pick the entry of a main that splits its features", () => {
+    const byValue = [{ property: "subtype", values: { pedestrian: "minor_pedestrian" } }];
+    const street = line("road_minor", { role: "main", key: "minor", keyByValue: byValue }, { type: "minor" }, 1);
+    const zone = line("road_minor", { role: "main", key: "minor", keyByValue: byValue }, { type: "minor", subtype: "pedestrian" }, 2, 300);
+    const arrow = label("road_minor_oneway_arrows", { role: "arrows", key: "minor_oneway_arrows", anchors: ["road_minor"] }, { subtype: "pedestrian" }, 5);
+    expect(find([street, zone, arrow], "road:minor_oneway_arrows")?.anchor?.key).toBe("road:minor_pedestrian");
+  });
+
+  it("draws the symbol bare when none of its anchors is in view", () => {
+    const grade = label("road_path_scale_label", { role: "label", key: "path_scale_label", anchors: ["road_path"] }, {}, 2);
+    const row = find([grade], "road:path_scale_label");
+    expect(row).toBeDefined();
+    expect(row?.anchor).toBeUndefined();
   });
 });

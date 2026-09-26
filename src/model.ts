@@ -391,12 +391,34 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     }
   }
 
+  /**
+   * The class entry a symbol sits on, among its anchor mains in view: first
+   * one that drew the very same feature (a grade label and its path are one
+   * feature), then, from a main that splits its features, the entry the
+   * symbol's own values pick, else the first anchor in view.
+   */
+  const anchorEntryFor = (anchors: string[], feature: RenderedFeature): LegendEntry | undefined => {
+    const own = new Set((copiesByIdentity.get(featureIdentity(feature)) ?? []).map((copy) => copy.layer.id));
+    const ordered = [...anchors.filter((id) => own.has(id)), ...anchors.filter((id) => !own.has(id))];
+    for (const mainId of ordered) {
+      const produced = entriesOfMain.get(mainId);
+      if (!produced?.size) continue;
+      const mainTag = mainTags.get(mainId);
+      const value = mainTag ? entryValueOf(mainTag, feature) : undefined;
+      const picked = value && mainTag ? resolveKey(`${mainTag.group}:${value}`) : undefined;
+      const entry = entries.get(picked && produced.has(picked) ? picked : [...produced][0]);
+      if (entry?.kind === "class") return entry;
+    }
+    return undefined;
+  };
+
   // Pass 3 — one instance entry per key: lowest rank, named before unnamed, then closest to the centre.
   for (const [entryKey, list] of candidates) {
     list.sort((a, b) => a.rank - b.rank || Number(Boolean(b.name)) - Number(Boolean(a.name)) || a.distance - b.distance);
     const best = list[0];
     const { tag } = instanceTags.get(entryKey)!;
     const layout = best.feature.layer.layout ?? {};
+    const on = tag.anchors?.length ? anchorEntryFor(tag.anchors, best.feature) : undefined;
     entries.set(entryKey, {
       key: entryKey,
       group: tag.group!,
@@ -405,6 +427,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       name: best.name,
       text: textStyleOf(best.feature),
       icon: layout["icon-image"] ? swatchLayerOf(best.feature, "icon", layerOrder) : undefined,
+      anchor: on ? { key: on.key, swatch: on.swatch, variant: on.variant } : undefined,
       swatch: [],
       variant: 0, // instance entries draw the map's own symbol, not a shape
       order: manifestEntries[entryKey]?.order ?? UNORDERED,

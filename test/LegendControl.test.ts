@@ -173,6 +173,23 @@ describe("LegendControl", () => {
     vi.useRealTimers();
   });
 
+  it("shows a shield on the road it belongs to when that road is in view", () => {
+    vi.useFakeTimers();
+    const map = createMockMap();
+    const container = new LegendControl({ language: "de", updateDelay: 0 }).onAdd(map);
+    vi.runAllTimers();
+    const shield = container.querySelector('[data-key="road:major_shield"]') as HTMLElement;
+    expect(shield).not.toBeNull();
+    const on = shield.querySelector(".maplibre-legend-control-symbol-on") as HTMLElement;
+    expect(on).not.toBeNull();
+    expect(on.querySelector(".maplibre-legend-control-swatch-line")).not.toBeNull(); // the motorway's stack
+    expect(on.querySelector(".maplibre-legend-control-symbol-text")?.textContent).toBe("A22"); // the shield on it
+    // a place name has nothing to sit on: the symbol alone
+    const place = container.querySelector('[data-key="place:town"] .maplibre-legend-control-visual') as HTMLElement;
+    expect(place.querySelector(".maplibre-legend-control-symbol-on")).toBeNull();
+    vi.useRealTimers();
+  });
+
   it("caps the list at 60 % of the map height and the panel at the map width", () => {
     const container = new LegendControl().onAdd(createMockMap());
     const list = container.querySelector(".maplibre-legend-control-list") as HTMLElement;

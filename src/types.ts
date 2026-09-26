@@ -33,6 +33,12 @@ export type LegendLayerTag = {
   instance?: boolean;
   /** Feature property ranking instance candidates (lower = more prominent). */
   rankProperty?: string;
+  /**
+   * Standalone symbol layers: the main layers the symbol sits on — a shield on
+   * its route, a river name on its waterway. The row draws the symbol on the
+   * swatch of the first of them in view, and bare when none is.
+   */
+  anchors?: string[];
   /** Set on bridge/tunnel duplicates of a layer; swatches prefer ground-level copies. */
   crossing?: string;
   /**
@@ -124,6 +130,11 @@ export type LegendEntry = {
   text?: TextStyle;
   /** Instance entries with an icon (POIs), drawn together with the name like on the map. */
   icon?: SwatchLayer;
+  /**
+   * Instance entries: the class entry of the feature the symbol sits on, when
+   * that feature is in view — the row shows the symbol on its swatch.
+   */
+  anchor?: { key: string; swatch: SwatchLayer[]; variant: number };
   /** Class entries: main + supporting layers, bottom to top. */
   swatch: SwatchLayer[];
   /**

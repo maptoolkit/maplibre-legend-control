@@ -251,7 +251,7 @@ export const features: RenderedFeature[] = [
     layer: {
       id: "road_major_shield",
       type: "symbol",
-      metadata: { [KEY]: { role: "shield", group: "road", instance: true, key: "major_shield" } },
+      metadata: { [KEY]: { role: "shield", group: "road", instance: true, key: "major_shield", anchors: ["road_major_dark", "road_major_medium"] } },
       paint: {},
       layout: {
         "icon-image": { name: "sdf:square" },

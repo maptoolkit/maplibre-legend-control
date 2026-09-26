@@ -3,6 +3,7 @@ import { vi } from "vitest";
 import {
   createFillSwatch,
   createLineSwatch,
+  createSymbolOnSwatch,
   createSymbolPreview,
   fillShapeFamilyFor,
   FILL_SHAPES,
@@ -265,6 +266,39 @@ describe("fill shapes", () => {
     expect(FILL_SHAPES.geometric.every((d) => !/[CLQ]/.test(d))).toBe(true); // orthogonal: only H/V edges
     expect(FILL_SHAPES.regular.every((d) => !/[CQ]/.test(d))).toBe(true); // straight edges
     expect(FILL_SHAPES.organic.every((d) => /C/.test(d))).toBe(true); // curves
+  });
+});
+
+describe("a symbol on its feature's swatch", () => {
+  const road = { id: "road_hiking", type: "line", role: "main", order: 3, paint: { "line-color": "rgba(200,40,40,1)", "line-width": 3 }, layout: {} };
+  const casing = {
+    id: "road_path_casing",
+    type: "line",
+    role: "casing",
+    order: 2,
+    paint: { "line-color": "rgba(255,255,255,1)", "line-width": 5 },
+    layout: {},
+  };
+
+  it("draws the feature's line under the symbol and lets it stretch without thickening the strokes", () => {
+    const box = createSymbolOnSwatch({ name: "Nordalpenweg", text: { fontStack: ["Rosario Bold"], size: 12 }, anchor: { swatch: [casing, road], variant: 3 } });
+    expect(box.classList.contains("maplibre-legend-control-symbol-on")).toBe(true);
+    const [swatch, symbol] = [...box.children] as HTMLElement[];
+    expect(swatch.classList.contains("maplibre-legend-control-swatch-line")).toBe(true);
+    expect(symbol.classList.contains("maplibre-legend-control-symbol")).toBe(true); // the symbol comes last: it paints on top
+    expect(symbol.textContent).toBe("Nordalpenweg");
+    const svg = swatch.querySelector("svg")!;
+    expect(svg.getAttribute("preserveAspectRatio")).toBe("none"); // the shape follows a wide name…
+    for (const path of svg.querySelectorAll("path")) expect(path.getAttribute("vector-effect")).toBe("non-scaling-stroke"); // …the strokes do not
+    expect(svg.querySelectorAll("path.maplibre-legend-control-stroke")).toHaveLength(2); // casing and road, as in the feature's own row
+  });
+
+  it("uses the same shape as the feature's row", () => {
+    const own = createLineSwatch([casing, road], 3).querySelector("path")!.getAttribute("d");
+    const under = createSymbolOnSwatch({ name: "01", text: { fontStack: ["Rosario Bold"] }, anchor: { swatch: [casing, road], variant: 3 } })
+      .querySelector("path")!
+      .getAttribute("d");
+    expect(under).toBe(own);
   });
 });
 
