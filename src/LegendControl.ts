@@ -128,6 +128,24 @@ function linkStylesheet(href: string | false | undefined): void {
   document.head.appendChild(link);
 }
 
+/** A small circled "i" at the row's top right that opens the entry's document in a new tab. */
+function infoLink(href: string, title: string): HTMLAnchorElement {
+  const a = document.createElement("a");
+  a.className = `${CLASS}-info`;
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.title = title;
+  a.setAttribute("aria-label", title);
+  a.innerHTML =
+    '<svg viewBox="0 0 14 14" aria-hidden="true" focusable="false">' +
+    '<circle cx="7" cy="7" r="6.25" fill="none" stroke="currentColor" stroke-width="1.1"/>' +
+    '<circle cx="7" cy="4.3" r="0.95" fill="currentColor"/>' +
+    '<path d="M5.7 6.4h1.9v4.1h-1.9z" fill="currentColor"/>' +
+    "</svg>";
+  return a;
+}
+
 /** An instance row's visual: the symbol on its feature's swatch when that feature is in view, else the symbol alone. */
 function symbolOf(entry: LegendEntry, getImage?: GetImage): HTMLElement {
   const { anchor } = entry;
@@ -169,6 +187,7 @@ export class LegendControl implements IControl {
     locale["LegendControl.Title"] ??= "Legend";
     locale["LegendControl.Empty"] ??= "Nothing to show in this view";
     locale["LegendControl.Toggle"] ??= "Show or hide the legend";
+    locale["LegendControl.Info"] ??= "More about this";
 
     // a transparent column: [toggle button] + panel (the card)
     this._container = document.createElement("div");
@@ -441,6 +460,7 @@ export class LegendControl implements IControl {
         const label = document.createElement("span");
         label.classList.add(`${CLASS}-label`);
         label.textContent = entry.label;
+        if (entry.link) label.appendChild(infoLink(entry.link, getUIString(map, "LegendControl.Info")));
         li.appendChild(label);
         ul.appendChild(li);
       }

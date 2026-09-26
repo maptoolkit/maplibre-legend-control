@@ -134,6 +134,11 @@ evaluated paint and layout, and builds:
   `attachesTo`, e.g. the contour elevations) has no row of its own: its text
   is set on the feature's own swatch line the same way — one contour line with
   its number, not a line and a labelled line.
+- **A document behind the row.** A manifest entry may carry a `link` (a URL,
+  or one per language like the label): the row then ends in a small circled
+  "i" at its top right that opens the document in a new tab — the SAC hiking
+  scale and the via ferrata grades link to the clubs' explanations. Its
+  tooltip is the locale string `LegendControl.Info`.
 
 Hairlines separate the two columns and the groups: a trace of the text colour,
 so they stay faint on whatever ground the style paints
@@ -205,7 +210,7 @@ monospace for SUSE Mono, sans-serif otherwise.
 
 ## Localization
 
-The control reads its UI strings from the map's `locale` table, like MapLibre's built-in controls — `LegendControl.Title` is the panel's accessible name (there is no visible header), `LegendControl.Toggle` the button's label, `LegendControl.Empty` the text shown when nothing is in view:
+The control reads its UI strings from the map's `locale` table, like MapLibre's built-in controls — `LegendControl.Title` is the panel's accessible name (there is no visible header), `LegendControl.Toggle` the button's label, `LegendControl.Empty` the text shown when nothing is in view, `LegendControl.Info` the tooltip of a row's info button:
 
 ```js
 const map = new maplibregl.Map({
@@ -214,6 +219,7 @@ const map = new maplibregl.Map({
   locale: {
     "LegendControl.Title": "Legende",
     "LegendControl.Toggle": "Legende ein-/ausblenden",
+    "LegendControl.Info": "Mehr dazu",
     "LegendControl.Empty": "Nichts zu zeigen in diesem Ausschnitt",
   },
 });

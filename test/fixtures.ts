@@ -12,10 +12,10 @@ export const manifest: LegendManifest = {
     nature: { label: { de: "Landschaft", en: "Landscape" }, order: 40 },
   },
   entries: {
-    "road:major_dark": { label: { de: "Hauptstraße", en: "Major road" }, order: 1 },
+    "road:major_dark": { label: { de: "Hauptstraße", en: "Major road" }, order: 1, link: "https://example.org/roads.pdf" },
     "road:minor": { label: { de: "Nebenstraße", en: "Minor road" }, order: 3 },
     "road:minor_pedestrian": { label: { de: "Fußgängerzone", en: "Pedestrian zone" }, order: 3 },
-    "nature:wood": { label: { de: "Wald", en: "Forest" }, order: 1 },
+    "nature:wood": { label: { de: "Wald", en: "Forest" }, order: 1, link: { de: "https://example.org/wald", en: "https://example.org/forest" } },
     "place:town": { label: { de: "Stadt", en: "Town" }, order: 2 },
     "place:village": { label: { de: "Dorf", en: "Village" }, order: 3, keys: ["place:hamlet", "place:farm"] },
     "poi:bench": { hidden: true },

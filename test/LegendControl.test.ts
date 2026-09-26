@@ -173,6 +173,24 @@ describe("LegendControl", () => {
     vi.useRealTimers();
   });
 
+  it("offers an entry's document behind a circled i after the description", () => {
+    vi.useFakeTimers();
+    const map = createMockMap();
+    const container = new LegendControl({ language: "de", updateDelay: 0 }).onAdd(map);
+    vi.runAllTimers();
+    const road = container.querySelector('[data-key="road:major_dark"] > .maplibre-legend-control-label') as HTMLElement;
+    const info = road.querySelector("a.maplibre-legend-control-info") as HTMLAnchorElement;
+    expect(info).not.toBeNull();
+    expect(info.href).toBe("https://example.org/roads.pdf");
+    expect(info.target).toBe("_blank");
+    expect(info.rel).toBe("noopener noreferrer");
+    expect(info.getAttribute("aria-label")).toBe("More about this"); // the locale default, overridable via map locale
+    expect(info.querySelector("svg circle")).not.toBeNull();
+    expect(road.textContent).toBe("Hauptstraße"); // the button adds no text
+    expect(container.querySelector('[data-key="road:minor"] .maplibre-legend-control-info')).toBeNull(); // no link, no button
+    vi.useRealTimers();
+  });
+
   it("shows a shield on the road it belongs to when that road is in view", () => {
     vi.useFakeTimers();
     const map = createMockMap();

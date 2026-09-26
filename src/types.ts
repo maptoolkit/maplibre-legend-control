@@ -20,6 +20,8 @@ export type LegendLayerTag = {
    * Property values the layer paints differently: a feature whose `property`
    * has one of these values belongs to that value's key instead of the layer's
    * own (`road_minor` → `road:minor_pedestrian`), first matching rule wins.
+   * The value `*` stands for any value the property has (a feature that
+   * carries a `via_ferrata_scale` at all).
    */
   keyByValue?: Array<{ property: string; values: Record<string, string> }>;
   /** Supporting layers: the main layers whose entries this layer contributes to. */
@@ -51,6 +53,8 @@ export type LegendLayerTag = {
 
 export type LegendManifestItem = {
   label?: LegendLabel;
+  /** A document explaining what the row shows, offered behind the row's info button: a URL, or one per language like a label. */
+  link?: string | LegendLabel;
   order?: number;
   hidden?: boolean;
   /** Entry keys this entry stands for (merges): `place:village` for `place:hamlet`, `place:farm`, … */
@@ -131,6 +135,8 @@ export type LegendEntry = {
   kind: "class" | "instance";
   /** Resolved display label (manifest label in the chosen language, or the humanized key). */
   label: string;
+  /** Resolved link of the manifest entry (in the chosen language), shown as the row's info button. */
+  link?: string;
   /** Instance entries: the rendered name of the chosen feature (may be absent for icon-only POIs). */
   name?: string;
   text?: TextStyle;

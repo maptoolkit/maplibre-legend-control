@@ -102,6 +102,11 @@ export function pickLabel(label: LegendLabel | undefined, language: string): str
   return label[language] ?? label.en ?? Object.values(label)[0];
 }
 
+/** An entry's link: one URL, or one per language picked like a label. */
+export function pickLink(link: string | LegendLabel | undefined, language: string): string | undefined {
+  return typeof link === "string" ? link : pickLabel(link, language);
+}
+
 /** A representative [lng, lat] for a geometry: the point, a line's middle vertex, a ring's vertex mean. */
 export function geometryAnchor(geometry: GeometryLike): [number, number] | undefined {
   if (!geometry || !Array.isArray(geometry.coordinates)) return undefined;
@@ -151,7 +156,9 @@ function tagOf(feature: RenderedFeature): LegendLayerTag | undefined {
 function entryValueOf(tag: LegendLayerTag, feature: RenderedFeature): string | undefined {
   for (const rule of tag.keyByValue ?? []) {
     const value = valueToString(feature.properties?.[rule.property]);
-    if (value !== undefined && rule.values[value]) return rule.values[value];
+    if (value === undefined) continue;
+    const key = rule.values[value] ?? rule.values["*"]; // `*`: any value the feature carries
+    if (key) return key;
   }
   return tag.key ?? (tag.keyProperty ? valueToString(feature.properties?.[tag.keyProperty]) : undefined);
 }
@@ -317,6 +324,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       group: best.tag.group!,
       kind: "class",
       label: pickLabel(manifestEntries[entryKey]?.label, language) ?? humanize(entryKey),
+      link: pickLink(manifestEntries[entryKey]?.link, language),
       swatch: [main],
       // The layer's position spreads sibling layers (they are consecutive in
       // the style, so they never share a shape); one layer holding many entries
@@ -410,6 +418,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       group: tag.group!,
       kind: "instance",
       label: pickLabel(manifestEntries[entryKey]?.label, language) ?? humanize(entryKey),
+      link: pickLink(manifestEntries[entryKey]?.link, language),
       name: best.name,
       text: textStyleOf(best.feature),
       icon: layout["icon-image"] ? swatchLayerOf(best.feature, "icon", layerOrder) : undefined,

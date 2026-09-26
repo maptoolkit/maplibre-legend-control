@@ -40,6 +40,14 @@ describe("buildLegendModel", () => {
   const group = (id: string) => model.groups.find((g) => g.id === id);
   const entry = (key: string) => model.groups.flatMap((g) => g.entries).find((e) => e.key === key);
 
+  it("resolves an entry's link, plain or per language", () => {
+    expect(entry("road:major_dark")?.link).toBe("https://example.org/roads.pdf");
+    expect(entry("nature:wood")?.link).toBe("https://example.org/wald"); // language de
+    expect(entry("road:minor")?.link).toBeUndefined();
+    const en = build({ language: "en" }).groups.flatMap((g) => g.entries);
+    expect(en.find((e) => e.key === "nature:wood")?.link).toBe("https://example.org/forest");
+  });
+
   it("orders groups by the manifest and labels them in the requested language", () => {
     expect(model.groups.map((g) => g.id)).toEqual(["place", "road", "nature", "poi"]);
     expect(group("road")?.label).toBe("Straßen und Verkehr");
@@ -377,6 +385,22 @@ describe("a symbol on its feature", () => {
     const zone = line("road_minor", { role: "main", key: "minor", keyByValue: byValue }, { type: "minor", subtype: "pedestrian" }, 2, 300);
     const arrow = label("road_minor_oneway_arrows", { role: "arrows", key: "minor_oneway_arrows", anchors: ["road_minor"] }, { subtype: "pedestrian" }, 5);
     expect(find([street, zone, arrow], "road:minor_oneway_arrows")?.anchor?.key).toBe("road:minor_pedestrian");
+  });
+
+  it("routes a feature by the presence of a property with the `*` value", () => {
+    const grades = [
+      { property: "via_ferrata_scale", values: { "*": "path_via_ferrata_scale_label" } },
+      { property: "sac_scale", values: { "*": "path_sac_scale_label" } },
+    ];
+    const tag = { role: "label", key: "path_scale_label", keyByValue: grades, anchors: ["road_path"] };
+    const sac = label("road_path_scale_label", tag, { sac_scale: "T4" }, 11);
+    const ferrata = label("road_path_scale_label", tag, { via_ferrata_scale: "C", sac_scale: "T5" }, 12); // both: the first rule wins, like the layer's coalesce
+    const none = label("road_path_scale_label", tag, {}, 13); // neither: the layer's own key
+    const keys = model([sac, ferrata, none])
+      .groups.flatMap((g) => g.entries)
+      .map((e) => e.key)
+      .sort();
+    expect(keys).toEqual(["road:path_sac_scale_label", "road:path_scale_label", "road:path_via_ferrata_scale_label"]);
   });
 
   it("knows whether a label follows its line on the map", () => {

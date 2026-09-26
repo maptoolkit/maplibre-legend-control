@@ -166,7 +166,31 @@
   min-height: var(--legend-control-row-height);
   padding: 3px 0;
 }
+/* the info button: a circled "i" at the row's top right, after the description */
+.maplibre-legend-control .maplibre-legend-control-info {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  color: var(--legend-control-color-fg-muted);
+  border-radius: 50%;
+  outline-offset: 1px;
+}
+.maplibre-legend-control .maplibre-legend-control-info svg {
+  width: 100%;
+  height: 100%;
+}
+.maplibre-legend-control .maplibre-legend-control-info:hover,
+.maplibre-legend-control .maplibre-legend-control-info:focus-visible {
+  color: var(--legend-control-color-fg-strong);
+}
+.maplibre-legend-control .maplibre-legend-control-label:has(> .maplibre-legend-control-info) {
+  padding-right: 18px; /* room for the button beside the last line */
+}
 .maplibre-legend-control .maplibre-legend-control-label {
+  position: relative;
   min-width: 0;
   min-height: var(--legend-control-row-height);
   display: flex;
