@@ -394,7 +394,7 @@ describe("a symbol on its feature", () => {
     ];
     const tag = { role: "label", key: "path_scale_label", keyByValue: grades, anchors: ["road_path"] };
     const sac = label("road_path_scale_label", tag, { sac_scale: "T4" }, 11);
-    const ferrata = label("road_path_scale_label", tag, { via_ferrata_scale: "C", sac_scale: "T5" }, 12); // both: the first rule wins, like the layer's coalesce
+    const ferrata = label("road_path_scale_label", tag, { via_ferrata_scale: "K3", sac_scale: "T5" }, 12); // both: the first rule wins, like the layer's coalesce
     const none = label("road_path_scale_label", tag, {}, 13); // neither: the layer's own key
     const keys = model([sac, ferrata, none])
       .groups.flatMap((g) => g.entries)
