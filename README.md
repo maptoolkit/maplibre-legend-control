@@ -143,6 +143,13 @@ evaluated paint and layout, and builds:
   scale and the via ferrata grades link to the clubs' explanations. Its
   tooltip is the locale string `LegendControl.Info`.
 
+The layer tags are read from the style sheet MapLibre holds
+(`map.style.stylesheet`), not from the rendered layers: a style set with
+`diff: true` does not carry layer `metadata` over to layers that exist in both
+styles, so after a style switch the rendered features could still carry the
+previous style's tags — a base line attached to lifts the old style did not
+draw would stay out of the new lift's row until a reload.
+
 Hairlines separate the two columns and the groups: a trace of the text colour,
 so they stay faint on whatever ground the style paints
 (`--legend-control-rule`). Every row follows one rule: **left what the map

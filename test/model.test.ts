@@ -40,6 +40,28 @@ describe("buildLegendModel", () => {
   const group = (id: string) => model.groups.find((g) => g.id === id);
   const entry = (key: string) => model.groups.flatMap((g) => g.entries).find((e) => e.key === key);
 
+  it("takes a layer's tag from the style sheet when given — the rendered layer may still carry the previous style's", () => {
+    // as after a diff-based setStyle: the casing's live metadata says it attaches to major_dark, the new style sheet says hidden
+    const tags = new Map(features.map((f) => [f.layer.id, f.layer.metadata?.["maptoolkit:legend"] as Record<string, unknown> | undefined]));
+    tags.set("road_major_casing", { hidden: true });
+    const stale = build()
+      .groups.flatMap((g) => g.entries)
+      .find((e) => e.key === "road:major_dark")!;
+    const fresh = build({ tags })
+      .groups.flatMap((g) => g.entries)
+      .find((e) => e.key === "road:major_dark")!;
+    expect(stale.swatch.map((l) => l.id)).toContain("road_major_casing");
+    expect(fresh.swatch.map((l) => l.id)).not.toContain("road_major_casing");
+    // a layer the sheet does not know keeps the tag the rendered layer carries
+    tags.delete("road_major_casing");
+    expect(
+      build({ tags })
+        .groups.flatMap((g) => g.entries)
+        .find((e) => e.key === "road:major_dark")!
+        .swatch.map((l) => l.id),
+    ).toContain("road_major_casing");
+  });
+
   it("resolves an entry's link, plain or per language", () => {
     expect(entry("road:major_dark")?.link).toBe("https://example.org/roads.pdf");
     expect(entry("nature:wood")?.link).toBe("https://example.org/wald"); // language de

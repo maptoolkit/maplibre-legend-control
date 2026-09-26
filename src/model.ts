@@ -27,6 +27,12 @@ export type BuildLegendModelInput = {
   manifest?: LegendManifest | null;
   /** Layer id → index in `style.layers`, to stack swatches bottom to top. */
   layerOrder: Map<string, number>;
+  /**
+   * Layer id → legend tag, from the current style sheet. Given, it replaces
+   * the tag on the rendered feature's layer, which MapLibre does not refresh
+   * when a style is set with `diff: true` (layer metadata is not diffed).
+   */
+  tags?: ReadonlyMap<string, LegendLayerTag | undefined>;
   /** Language code for manifest labels (`de`, `en`, …); falls back to `en`, then to the first label. */
   language: string;
   viewport: Viewport;
@@ -144,9 +150,20 @@ export function geometryAnchor(geometry: GeometryLike): [number, number] | undef
   }
 }
 
-function tagOf(feature: RenderedFeature): LegendLayerTag | undefined {
-  const tag = feature.layer.metadata?.[LEGEND_METADATA_KEY];
+/** The legend tag in a layer's metadata, if it is one. */
+export function tagIn(metadata: Record<string, unknown> | undefined): LegendLayerTag | undefined {
+  const tag = metadata?.[LEGEND_METADATA_KEY];
   return tag && typeof tag === "object" ? (tag as LegendLayerTag) : undefined;
+}
+
+/**
+ * A feature's layer tag: from the style sheet's layers when given (a
+ * diff-based `setStyle` leaves the live layers' metadata as it was, so the
+ * rendered feature may carry the previous style's tag), else from the
+ * rendered layer itself.
+ */
+function tagFor(feature: RenderedFeature, tags?: ReadonlyMap<string, LegendLayerTag | undefined>): LegendLayerTag | undefined {
+  return tags?.has(feature.layer.id) ? tags.get(feature.layer.id) : tagIn(feature.layer.metadata);
 }
 
 /**
@@ -194,6 +211,7 @@ type InstanceCandidate = {
  */
 export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
   const { features, layerOrder, language, viewport, isFullyVisible } = input;
+  const tagOf = (feature: RenderedFeature) => tagFor(feature, input.tags);
   const manifest = input.manifest ?? {};
   const manifestEntries = manifest.entries ?? {};
   const manifestGroups = manifest.groups ?? {};

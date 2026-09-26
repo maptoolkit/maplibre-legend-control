@@ -1,5 +1,5 @@
 import type { Map, IControl, ControlPosition } from "maplibre-gl";
-import { buildLegendModel, featureIdentity, valueToString } from "./model";
+import { buildLegendModel, tagIn, featureIdentity, valueToString } from "./model";
 import { createSwatch, createSymbolOnSwatch, createSymbolPreview, type GetImage, type RenderOptions } from "./swatch";
 import { LEGEND_METADATA_KEY, type LegendEntry, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
@@ -311,6 +311,11 @@ export class LegendControl implements IControl {
     const manifest = (style?.metadata as Record<string, unknown> | undefined)?.[LEGEND_METADATA_KEY] as LegendManifest | undefined;
     linkStylesheet(this.options.fonts === undefined ? manifest?.fonts?.css : this.options.fonts);
     const layerOrder = new globalThis.Map<string, number>((style?.layers ?? []).map((l, i) => [l.id, i]));
+    // The tags come from the style sheet MapLibre holds, not from the rendered
+    // layers: a diff-based setStyle does not carry layer metadata over, so a
+    // layer that exists in both styles would keep the previous style's tag.
+    const sheet = (map as unknown as { style?: { stylesheet?: { layers?: Array<{ id: string; metadata?: Record<string, unknown> }> } } }).style?.stylesheet;
+    const tags = sheet?.layers ? new globalThis.Map(sheet.layers.map((l) => [l.id, tagIn(l.metadata)])) : undefined;
     const canvas = map.getCanvas();
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
@@ -320,6 +325,7 @@ export class LegendControl implements IControl {
       features,
       manifest,
       layerOrder,
+      tags,
       language: this.options.language ?? detectLanguage(),
       viewport: { width, height, project: (lngLat) => map.project(lngLat) },
       isFullyVisible: this._fullyVisibleTest(width, height),

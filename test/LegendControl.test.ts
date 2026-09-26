@@ -173,6 +173,27 @@ describe("LegendControl", () => {
     vi.useRealTimers();
   });
 
+  it("reads the tags from the style sheet MapLibre holds, not from the rendered layers", () => {
+    vi.useFakeTimers();
+    const map = createMockMap();
+    // the sheet after a diff-based style switch: the casing is hidden there, while the rendered features still carry the old tag
+    (map as unknown as { style: Record<string, unknown> }).style.stylesheet = {
+      layers: features
+        .map((f) => f.layer.id)
+        .filter((id, i, all) => all.indexOf(id) === i)
+        .map((id) => ({
+          id,
+          metadata: id === "road_major_casing" ? { "maptoolkit:legend": { hidden: true } } : features.find((f) => f.layer.id === id)!.layer.metadata,
+        })),
+    };
+    const container = new LegendControl({ language: "de", updateDelay: 0 }).onAdd(map);
+    vi.runAllTimers();
+    const road = container.querySelector('[data-key="road:major_dark"]') as HTMLElement;
+    expect(road.querySelector(".maplibre-legend-control-stroke-casing")).toBeNull(); // the sheet's tag won
+    expect(road.querySelector(".maplibre-legend-control-stroke-main")).not.toBeNull();
+    vi.useRealTimers();
+  });
+
   it("never grows past the map's edge: the room is measured from the panel's own edge", () => {
     vi.useFakeTimers();
     const map = createMockMap();
