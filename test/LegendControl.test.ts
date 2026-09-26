@@ -173,6 +173,31 @@ describe("LegendControl", () => {
     vi.useRealTimers();
   });
 
+  it("never grows past the map's edge: the room is measured from the panel's own edge", () => {
+    vi.useFakeTimers();
+    const map = createMockMap();
+    const control = new LegendControl({ language: "de", updateDelay: 0 });
+    const container = control.onAdd(map);
+    vi.runAllTimers();
+    const panel = container.querySelector(".maplibre-legend-control-panel") as HTMLElement;
+    expect(panel.style.maxWidth).toBe("380px"); // no layout yet (jsdom): the estimate, map width − 20
+    // mounted 62 px into a 400 px map, as the style editor's panel column does: the room ends at the map's right edge
+    const rect = (left: number, width: number) =>
+      ({ left, right: left + width, width, top: 0, bottom: 0, height: 0, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(map.getContainer(), "getBoundingClientRect").mockReturnValue(rect(0, 400));
+    vi.spyOn(panel, "getBoundingClientRect").mockReturnValue(rect(62, 300));
+    (control as unknown as { _fitToMap: () => void })._fitToMap();
+    expect(panel.style.maxWidth).toBe("328px"); // 400 − 62 − 10
+    // in a right-hand corner the panel's right edge is the fixed one
+    const corner = document.createElement("div");
+    corner.className = "maplibregl-ctrl-top-right";
+    corner.appendChild(container);
+    vi.spyOn(panel, "getBoundingClientRect").mockReturnValue(rect(90, 300)); // right edge at 390
+    (control as unknown as { _fitToMap: () => void })._fitToMap();
+    expect(panel.style.maxWidth).toBe("380px"); // 390 − 0 − 10
+    vi.useRealTimers();
+  });
+
   it("caps a name at the smaller of a share of the map and a pixel width", () => {
     vi.useFakeTimers();
     // the mock map is 400 px wide: 50 % = 200 px beats the 260 px default

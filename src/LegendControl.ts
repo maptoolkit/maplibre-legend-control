@@ -52,7 +52,8 @@ export type LegendControlOptions = {
   maxHeightRatio?: number;
   /**
    * How wide a name in the map font may grow: the smaller of `px` and
-   * `fraction` of the map's width. A word longer than that is cut with an
+   * `fraction` of the room the panel has (the map's width, less the panel's
+   * offset from the far edge). A word longer than that is cut with an
    * ellipsis, a name set along a line is shortened to fit; the map's own
    * line wrapping applies below the cap. `false` lifts the cap.
    * @defaultValue `{ fraction: 0.5, px: 260 }`
@@ -399,7 +400,15 @@ export class LegendControl implements IControl {
   }
 
   /** Cap the panel at `maxHeightRatio` of the map's height and at the map's width; the list scrolls. */
-  private _fitToMap() {
+  /**
+   * Size the panel to the map: the list scrolls beyond a share of the map's
+   * height, the panel never grows past the map's edge — measured from the
+   * panel's fixed edge (left, or right in a right-hand corner) to the far edge
+   * of the map, so a panel mounted somewhere inside the map counts only the
+   * room it actually has. The name cap follows that room; a resize that
+   * changes it re-renders the rows (unless a render is what called here).
+   */
+  private _fitToMap(rerender = true) {
     const map = this._map;
     if (!map || !this._container || !this._panel || !this._list) return;
     const box = map.getContainer();
@@ -409,26 +418,35 @@ export class LegendControl implements IControl {
       const ratio = this.options.maxHeightRatio ?? 0.6;
       this._list.style.maxHeight = `${Math.max(48, Math.round(height * ratio))}px`;
     }
+    let available = width;
     if (width > 0) {
-      // beside the toggle button in a left/right map corner the panel starts a button width further in
-      const beside = Boolean(this._toggleButton) && /\bmaplibregl-ctrl-(top|bottom)-(left|right)\b/.test(this._container.parentElement?.className ?? "");
-      this._panel.style.maxWidth = `${Math.max(160, width - (beside ? 60 : 20))}px`;
+      const corner = /\bmaplibregl-ctrl-(?:top|bottom)-(left|right|center)\b/.exec(this._container.parentElement?.className ?? "")?.[1];
+      // before the panel has a layout (or centred, where its edges move with its width): an estimate —
+      // beside the toggle button in a left/right corner the panel starts a button width further in
+      const beside = Boolean(this._toggleButton) && (corner === "left" || corner === "right");
+      available = width - (beside ? 60 : 20);
+      const mapRect = box.getBoundingClientRect();
+      const panelRect = this._panel.getBoundingClientRect();
+      if (mapRect.width > 0 && panelRect.width > 0 && corner !== "center") {
+        available = Math.round((corner === "right" ? panelRect.right - mapRect.left : mapRect.right - panelRect.left) - 10);
+      }
+      this._panel.style.maxWidth = `${Math.max(160, available)}px`;
     }
-    // the name cap follows the map's width: a resize that changes it re-renders the rows
-    const cap = this._nameCapFor(width);
+    const cap = this._nameCapFor(available);
     if (cap !== this._nameCap) {
       const rendered = this._nameCap !== undefined && this._list.childElementCount > 0;
       this._nameCap = cap;
-      if (rendered) this._scheduleUpdate();
+      if (rendered && rerender) this._scheduleUpdate();
     }
   }
 
-  private _nameCapFor(mapWidth: number): number | undefined {
+  /** The cap on a name's width: the smaller of the pixel cap and a share of the room the panel has. */
+  private _nameCapFor(available: number): number | undefined {
     const option = this.options.maxNameWidth;
     if (option === false) return undefined;
     const px = option?.px ?? 260;
     const fraction = option?.fraction ?? 0.5;
-    return mapWidth > 0 ? Math.round(Math.min(px, mapWidth * fraction)) : px;
+    return available > 0 ? Math.round(Math.min(px, available * fraction)) : px;
   }
 
   private _scheduleUpdate() {
@@ -443,6 +461,7 @@ export class LegendControl implements IControl {
     const map = this._map;
     const list = this._list;
     if (!map || !list) return;
+    this._fitToMap(false); // the panel has a layout by now: measure the room, and the name cap with it
     const getImage: GetImage = (id) => {
       try {
         return map.getImage(id) as unknown as ReturnType<GetImage>;
