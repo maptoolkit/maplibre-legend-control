@@ -173,6 +173,27 @@ describe("LegendControl", () => {
     vi.useRealTimers();
   });
 
+  it("caps a name at the smaller of a share of the map and a pixel width", () => {
+    vi.useFakeTimers();
+    // the mock map is 400 px wide: 50 % = 200 px beats the 260 px default
+    const wide = new LegendControl({ language: "de", updateDelay: 0 }).onAdd(createMockMap());
+    vi.runAllTimers();
+    const town = wide.querySelector('[data-key="place:town"] .maplibre-legend-control-symbol-text') as HTMLElement;
+    expect(town.style.maxWidth).toBe("140px"); // the map's own wrapping width, below the cap
+    expect(town.classList.contains("maplibre-legend-control-symbol-text-cut")).toBe(false);
+    // a tight cap cuts the longest word
+    const tight = new LegendControl({ language: "de", updateDelay: 0, maxNameWidth: { px: 30, fraction: 0.5 } }).onAdd(createMockMap());
+    vi.runAllTimers();
+    const cut = tight.querySelector('[data-key="place:town"] .maplibre-legend-control-symbol-text') as HTMLElement;
+    expect(cut.style.minWidth).toBe("30px");
+    expect(cut.classList.contains("maplibre-legend-control-symbol-text-cut")).toBe(true);
+    // no cap at all
+    const free = new LegendControl({ language: "de", updateDelay: 0, maxNameWidth: false }).onAdd(createMockMap());
+    vi.runAllTimers();
+    expect((free.querySelector('[data-key="place:town"] .maplibre-legend-control-symbol-text') as HTMLElement).style.minWidth).toBe("");
+    vi.useRealTimers();
+  });
+
   it("offers an entry's document behind a circled i after the description", () => {
     vi.useFakeTimers();
     const map = createMockMap();

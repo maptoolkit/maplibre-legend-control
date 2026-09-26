@@ -300,6 +300,11 @@
   stroke-linejoin: round;
   stroke-linecap: round;
 }
+/* a word longer than the name cap: cut with an ellipsis (the box is capped by the control) */
+.maplibre-legend-control .maplibre-legend-control-symbol-text-cut {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* icon-text-fit: the icon is stretched behind the text and the padding keeps it clear */
 .maplibre-legend-control .maplibre-legend-control-symbol-fitted {
   background-repeat: no-repeat;

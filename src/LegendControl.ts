@@ -1,6 +1,6 @@
 import type { Map, IControl, ControlPosition } from "maplibre-gl";
 import { buildLegendModel, featureIdentity, valueToString } from "./model";
-import { createSwatch, createSymbolOnSwatch, createSymbolPreview, type GetImage } from "./swatch";
+import { createSwatch, createSymbolOnSwatch, createSymbolPreview, type GetImage, type RenderOptions } from "./swatch";
 import { LEGEND_METADATA_KEY, type LegendEntry, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
 /**
@@ -51,6 +51,14 @@ export type LegendControlOptions = {
    */
   maxHeightRatio?: number;
   /**
+   * How wide a name in the map font may grow: the smaller of `px` and
+   * `fraction` of the map's width. A word longer than that is cut with an
+   * ellipsis, a name set along a line is shortened to fit; the map's own
+   * line wrapping applies below the cap. `false` lifts the cap.
+   * @defaultValue `{ fraction: 0.5, px: 260 }`
+   */
+  maxNameWidth?: { fraction?: number; px?: number } | false;
+  /**
    * Panel background: `"auto"` takes the style's `background` layer colour at
    * the current zoom (so names and swatches sit on the same ground as on the
    * map), falling back to `hsl(90, 23%, 95%)` when the style has none; any CSS
@@ -80,6 +88,7 @@ export const defaultLegendControlOptions: LegendControlOptions = {
   edgeBuffer: 0.05,
   updateDelay: 100,
   maxHeightRatio: 0.6,
+  maxNameWidth: { fraction: 0.5, px: 260 },
   background: "auto",
 };
 
@@ -147,9 +156,11 @@ function infoLink(href: string, title: string): HTMLAnchorElement {
 }
 
 /** An instance row's visual: the symbol on its feature's swatch when that feature is in view, else the symbol alone. */
-function symbolOf(entry: LegendEntry, getImage?: GetImage): HTMLElement {
+function symbolOf(entry: LegendEntry, getImage?: GetImage, render: RenderOptions = {}): HTMLElement {
   const { anchor } = entry;
-  return anchor ? createSymbolOnSwatch({ name: entry.name, text: entry.text, icon: entry.icon, anchor }, getImage) : createSymbolPreview(entry, getImage);
+  return anchor
+    ? createSymbolOnSwatch({ name: entry.name, text: entry.text, icon: entry.icon, anchor }, getImage, render)
+    : createSymbolPreview(entry, getImage, render);
 }
 
 export class LegendControl implements IControl {
@@ -166,6 +177,8 @@ export class LegendControl implements IControl {
   /** a name set along its line was measured in the fallback font until the webfont arrived */
   private _onFontsLoaded = () => this._scheduleUpdate();
   private _onResize = () => this._fitToMap();
+  /** the current cap on a name's width in px (see `maxNameWidth`), undefined = none */
+  private _nameCap?: number;
 
   /**
    * @param options - Options for configuring the legend control.
@@ -401,6 +414,21 @@ export class LegendControl implements IControl {
       const beside = Boolean(this._toggleButton) && /\bmaplibregl-ctrl-(top|bottom)-(left|right)\b/.test(this._container.parentElement?.className ?? "");
       this._panel.style.maxWidth = `${Math.max(160, width - (beside ? 60 : 20))}px`;
     }
+    // the name cap follows the map's width: a resize that changes it re-renders the rows
+    const cap = this._nameCapFor(width);
+    if (cap !== this._nameCap) {
+      const rendered = this._nameCap !== undefined && this._list.childElementCount > 0;
+      this._nameCap = cap;
+      if (rendered) this._scheduleUpdate();
+    }
+  }
+
+  private _nameCapFor(mapWidth: number): number | undefined {
+    const option = this.options.maxNameWidth;
+    if (option === false) return undefined;
+    const px = option?.px ?? 260;
+    const fraction = option?.fraction ?? 0.5;
+    return mapWidth > 0 ? Math.round(Math.min(px, mapWidth * fraction)) : px;
   }
 
   private _scheduleUpdate() {
@@ -422,6 +450,7 @@ export class LegendControl implements IControl {
         return undefined;
       }
     };
+    const render = { maxNameWidth: this._nameCap };
 
     list.replaceChildren();
     if (!model.groups.length) {
@@ -454,7 +483,7 @@ export class LegendControl implements IControl {
         // (a peak keeps its elevation left-aligned under the name).
         const visual = document.createElement("span");
         visual.classList.add(`${CLASS}-visual`);
-        visual.appendChild(entry.kind === "instance" ? symbolOf(entry, getImage) : createSwatch(entry.swatch, getImage, entry.variant));
+        visual.appendChild(entry.kind === "instance" ? symbolOf(entry, getImage, render) : createSwatch(entry.swatch, getImage, entry.variant, render));
         li.appendChild(visual);
 
         const label = document.createElement("span");

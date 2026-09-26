@@ -16,6 +16,9 @@ export type StyleImageLike = {
 };
 export type GetImage = (id: string) => StyleImageLike | undefined | null;
 
+/** How the rows are rendered: `maxNameWidth` caps a name in the map font (px); see `LegendControlOptions.maxNameWidth`. */
+export type RenderOptions = { maxNameWidth?: number };
+
 const CLASS = "maplibre-legend-control";
 const SWATCH_W = 64;
 const SWATCH_H = 26;
@@ -325,11 +328,12 @@ function stretchX(shape: SVGElement, scaleX: number): void {
  * map places it so, else straight across its middle. The box grows with the
  * name plus the reach; without a label it is the plain bend.
  */
-export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElement {
+export function createLineSwatch(layers: SwatchLayer[], variant = 0, options: RenderOptions = {}): HTMLElement {
   const label = layers.find((l) => l.type === "symbol" && l.role === "label");
-  const name = label ? valueToString(label.layout["text-field"])?.trim() : undefined;
-  if (!label || !name) return lineSwatchParts(layers, variant).box;
+  const raw = label ? valueToString(label.layout["text-field"])?.trim() : undefined;
+  if (!label || !raw) return lineSwatchParts(layers, variant).box;
   const text = textStyleFromLayer(label.layout, label.paint);
+  const name = truncateName(raw, text, options.maxNameWidth);
   const parts = lineSwatchParts(layers, variant, { width: nameWidth(name, text) + 2 * SYMBOL_REACH, readable: true });
   if (text.alongLine) setNameAlongLine(parts, name, text);
   else setNameStraight(parts, name, text);
@@ -628,6 +632,34 @@ export function nameWidth(name: string, text: TextStyle): number {
   return width + (text.letterSpacing ?? 0) * size * Math.max(0, shown.length - 1);
 }
 
+/** A name shortened with an ellipsis until it measures no wider than `cap`; unchanged without a cap or when it fits. */
+export function truncateName(name: string, text: TextStyle, cap?: number): string {
+  if (!cap || !(cap > 0) || nameWidth(name, text) <= cap) return name;
+  let shown = name;
+  while (shown.length > 1) {
+    shown = shown.slice(0, -1).trimEnd();
+    if (nameWidth(`${shown}…`, text) <= cap) break;
+  }
+  return `${shown}…`;
+}
+
+/**
+ * Cap a name in the map font (HTML): its box wraps at the map's `text-max-width`
+ * and grows for a longer word up to the cap; a word longer than the cap is cut
+ * with an ellipsis (the `-cut` class clips it). Without a cap the stylesheet's
+ * `min-width: min-content` keeps every word whole.
+ */
+function capName(textEl: HTMLElement, name: string, text: TextStyle | undefined, cap: number | undefined): void {
+  if (!cap || !(cap > 0)) return;
+  const style = text ?? { fontStack: [] };
+  const size = clamp(style.size ?? 14, 8, 22);
+  const words = name.split(/\s+|(?<=[-/])/).filter(Boolean);
+  const longest = Math.max(0, ...words.map((w) => nameWidth(w, style)));
+  textEl.style.maxWidth = `${round2(Math.min((style.maxWidth ?? 10) * size, cap))}px`;
+  textEl.style.minWidth = `${round2(Math.min(longest, cap))}px`;
+  if (longest > cap) textEl.classList.add(`${CLASS}-symbol-text-cut`);
+}
+
 /**
  * The direction of a swatch path at its middle, in degrees (clockwise, screen
  * coordinates) — where a symbol placed along the line is turned to on the
@@ -760,6 +792,7 @@ function setNameStraight(parts: LineSwatchParts, name: string, text: TextStyle):
 export function createSymbolOnSwatch(
   entry: { name?: string; text?: TextStyle; icon?: SwatchLayer; anchor: { swatch: SwatchLayer[]; variant: number } },
   getImage?: GetImage,
+  options: RenderOptions = {},
 ): HTMLElement {
   const box = el("span", `${CLASS}-symbol-on`);
   const main = entry.anchor.swatch.find((l) => l.role === "main") ?? entry.anchor.swatch[0];
@@ -769,8 +802,9 @@ export function createSymbolOnSwatch(
 
   if (main?.type === "line" && entry.name && entry.text?.alongLine && !entry.icon) {
     // set along the line inside the SVG, which sizes itself to the name plus the reach
-    const parts = lineSwatchParts(entry.anchor.swatch, entry.anchor.variant, { width: nameWidth(entry.name, entry.text) + 2 * SYMBOL_REACH, readable: true });
-    setNameAlongLine(parts, entry.name, entry.text);
+    const name = truncateName(entry.name, entry.text, options.maxNameWidth);
+    const parts = lineSwatchParts(entry.anchor.swatch, entry.anchor.variant, { width: nameWidth(name, entry.text) + 2 * SYMBOL_REACH, readable: true });
+    setNameAlongLine(parts, name, entry.text);
     box.classList.add(`${CLASS}-symbol-on-path`);
     box.appendChild(parts.box);
     return box;
@@ -783,7 +817,7 @@ export function createSymbolOnSwatch(
     for (const shape of svg.querySelectorAll("path, rect, circle, ellipse")) shape.setAttribute("vector-effect", "non-scaling-stroke");
   }
   box.appendChild(base);
-  const symbol = createSymbolPreview(entry, getImage);
+  const symbol = createSymbolPreview(entry, getImage, options);
   if (entry.icon && main?.type === "line" && followsLine(entry.icon.layout, "icon")) {
     // a one-way arrow points along its street
     const d = svg?.querySelector("path")?.getAttribute("d");
@@ -794,12 +828,12 @@ export function createSymbolOnSwatch(
   return box;
 }
 
-export function createSwatch(layers: SwatchLayer[], getImage?: GetImage, variant = 0): HTMLElement {
+export function createSwatch(layers: SwatchLayer[], getImage?: GetImage, variant = 0, options: RenderOptions = {}): HTMLElement {
   const main = layers.find((l) => l.role === "main") ?? layers[0];
   if (!main) return el("span", `${CLASS}-swatch ${CLASS}-swatch-empty`);
   switch (main.type) {
     case "line":
-      return createLineSwatch(layers, variant);
+      return createLineSwatch(layers, variant, options);
     case "fill":
     case "fill-extrusion":
       return createFillSwatch(
@@ -930,7 +964,11 @@ function setName(target: HTMLElement, name: string): void {
   });
 }
 
-export function createSymbolPreview(entry: { name?: string; text?: TextStyle; icon?: SwatchLayer }, getImage?: GetImage): HTMLElement {
+export function createSymbolPreview(
+  entry: { name?: string; text?: TextStyle; icon?: SwatchLayer },
+  getImage?: GetImage,
+  options: RenderOptions = {},
+): HTMLElement {
   const box = el("span", `${CLASS}-symbol`);
 
   let textEl: HTMLElement | undefined;
@@ -938,6 +976,7 @@ export function createSymbolPreview(entry: { name?: string; text?: TextStyle; ic
     textEl = el("span", `${CLASS}-symbol-text`);
     setName(textEl, entry.name);
     if (entry.text) applyTextStyle(textEl, entry.text);
+    capName(textEl, entry.name, entry.text, options.maxNameWidth);
   }
   // A shield: the icon is stretched behind the text, so it is not a picture of
   // its own. Where that cannot be drawn, the plain icon beside the text stands in.

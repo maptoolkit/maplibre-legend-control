@@ -8,6 +8,7 @@ import {
   fillShapeFamilyFor,
   nameWidth,
   pathMidTangent,
+  truncateName,
   FILL_SHAPES,
   lineShapeFamilyFor,
   LINE_SHAPES,
@@ -473,6 +474,44 @@ describe("nameWidth", () => {
     expect(plain).toBeGreaterThan(0);
     expect(nameWidth("Donau", { fontStack: ["Rosario Regular"], size: 10, letterSpacing: 0.1 })).toBeCloseTo(plain + 0.1 * 10 * 4, 5);
     expect(nameWidth("Donau", { fontStack: ["Rosario Regular"], size: 10, transform: "uppercase" })).toBeGreaterThanOrEqual(plain); // measured as shown
+  });
+});
+
+describe("the name cap", () => {
+  const text = { fontStack: ["Rosario Bold"], size: 14, maxWidth: 10 };
+
+  it("lets a word up to the cap widen the box and wraps the rest at the map's text-max-width", () => {
+    const box = createSymbolPreview({ name: "Tulln an der Donau", text }, undefined, { maxNameWidth: 200 });
+    const el = box.querySelector(".maplibre-legend-control-symbol-text") as HTMLElement;
+    expect(el.style.maxWidth).toBe("140px"); // 10 em at 14 px, below the cap
+    expect(parseFloat(el.style.minWidth)).toBeCloseTo(nameWidth("Donau", text), 1); // the longest word
+    expect(el.classList.contains("maplibre-legend-control-symbol-text-cut")).toBe(false);
+  });
+
+  it("cuts a word longer than the cap with an ellipsis", () => {
+    const box = createSymbolPreview({ name: "Niederösterreich", text }, undefined, { maxNameWidth: 60 });
+    const el = box.querySelector(".maplibre-legend-control-symbol-text") as HTMLElement;
+    expect(el.style.maxWidth).toBe("60px");
+    expect(el.style.minWidth).toBe("60px");
+    expect(el.classList.contains("maplibre-legend-control-symbol-text-cut")).toBe(true);
+    // without a cap nothing is set inline: the stylesheet keeps every word whole
+    const free = createSymbolPreview({ name: "Niederösterreich", text }).querySelector(".maplibre-legend-control-symbol-text") as HTMLElement;
+    expect(free.style.minWidth).toBe("");
+    expect(free.classList.contains("maplibre-legend-control-symbol-text-cut")).toBe(false);
+  });
+
+  it("shortens a name set along a line until it fits", () => {
+    const river = { id: "water_waterway", type: "line", role: "main", order: 2, paint: { "line-color": "rgba(80,140,200,1)", "line-width": 2 }, layout: {} };
+    const label = { fontStack: ["Rosario Italic"], size: 12, alongLine: true };
+    const long = "Wiener Neustädter Kanal";
+    expect(truncateName(long, label, 80).endsWith("…")).toBe(true);
+    expect(nameWidth(truncateName(long, label, 80), label)).toBeLessThanOrEqual(80);
+    expect(truncateName("Inn", label, 80)).toBe("Inn"); // fits: untouched
+    expect(truncateName(long, label)).toBe(long); // no cap: untouched
+    const box = createSymbolOnSwatch({ name: long, text: label, anchor: { swatch: [river], variant: 1 } }, undefined, { maxNameWidth: 80 });
+    const shown = box.querySelector("textPath")!.textContent!;
+    expect(shown.endsWith("…")).toBe(true);
+    expect(Number(box.querySelector("svg")!.getAttribute("width"))).toBe(Math.ceil(nameWidth(shown, label) + 20));
   });
 });
 
