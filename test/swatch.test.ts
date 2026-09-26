@@ -409,6 +409,52 @@ describe("a name along its line", () => {
   });
 });
 
+describe("a label stacked into a line row", () => {
+  const contour = {
+    id: "relief_contour_monochrome",
+    type: "line",
+    role: "main",
+    order: 1,
+    paint: { "line-color": "rgba(150,110,80,1)", "line-width": 1 },
+    layout: {},
+  };
+  const elevation = {
+    id: "relief_contour_monochrome_label",
+    type: "symbol",
+    role: "label",
+    order: 2,
+    paint: { "text-color": "rgba(120,90,60,1)", "text-halo-color": "rgba(255,255,255,1)", "text-halo-width": 1 },
+    layout: { "text-field": "1500", "text-font": ["Rosario Regular"], "text-size": 10, "text-letter-spacing": 0.1, "symbol-placement": "line" },
+  };
+
+  it("sets the elevation along the contour in the contour's own row — one line with its number", () => {
+    const box = createLineSwatch([contour, elevation], 2);
+    const svg = box.querySelector("svg")!;
+    const along = svg.querySelector("text > textPath")!;
+    expect(along.textContent).toBe("1500");
+    const text = svg.querySelector("text") as SVGElement;
+    expect(text.style.letterSpacing).toBe("0.1em");
+    expect(text.getAttribute("fill")).toBe("rgba(120,90,60,1)");
+    expect(svg.querySelectorAll("path.maplibre-legend-control-stroke")).toHaveLength(1); // the label adds no stroke
+    expect(box.classList.contains("maplibre-legend-control-swatch-line-medium")).toBe(true); // a contour's tight bend, eased for the number
+    expect(createLineSwatch([contour], 2).querySelector("text")).toBeNull(); // no label stacked: the plain bend
+  });
+
+  it("grows the row's box with a long name and sets a point-placed label straight", () => {
+    const named = { ...elevation, layout: { "text-field": "Höhenlinie 1500 m", "text-font": ["Rosario Regular"], "text-size": 12 } }; // no line placement
+    const box = createLineSwatch([contour, named], 2);
+    const svg = box.querySelector("svg")!;
+    const width = Number(svg.getAttribute("width"));
+    expect(width).toBeGreaterThan(64);
+    expect(box.style.width).toBe(`${width}px`); // the box follows the SVG, not the fixed swatch width
+    const text = svg.querySelector("text")!;
+    expect(text.querySelector("textPath")).toBeNull();
+    expect(text.getAttribute("x")).toBe(String(Math.round((width / 2) * 100) / 100));
+    expect(text.getAttribute("y")).toBe("13");
+    expect(text.textContent).toBe("Höhenlinie 1500 m");
+  });
+});
+
 describe("pathMidTangent", () => {
   it("reads the direction at half the length", () => {
     expect(pathMidTangent("M 2 13 H 62")).toBe(0);

@@ -130,7 +130,10 @@ evaluated paint and layout, and builds:
   into the line's direction, a shield (viewport alignment) stays upright. Of
   several anchors in view the one that drew the same feature wins, then the
   entry the symbol's own values pick, then the first; with none in view the
-  symbol stands alone.
+  symbol stands alone. A label the style attaches to its feature instead (tag
+  `attachesTo`, e.g. the contour elevations) has no row of its own: its text
+  is set on the feature's own swatch line the same way — one contour line with
+  its number, not a line and a labelled line.
 
 Hairlines separate the two columns and the groups: a trace of the text colour,
 so they stay faint on whatever ground the style paints

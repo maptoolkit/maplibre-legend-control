@@ -11,7 +11,7 @@ import {
   type SwatchLayer,
   type TextStyle,
 } from "./types";
-import { swatchVariantFor } from "./swatch";
+import { swatchVariantFor, textStyleFromLayer } from "./swatch";
 
 /** Viewport geometry the instance selection needs; `project` maps [lng, lat] to CSS pixels. */
 export type Viewport = {
@@ -168,30 +168,7 @@ function swatchLayerOf(feature: RenderedFeature, role: string, layerOrder: Map<s
 }
 
 function textStyleOf(feature: RenderedFeature): TextStyle {
-  const layout = feature.layer.layout ?? {};
-  const paint = feature.layer.paint ?? {};
-  const fontStack = Array.isArray(layout["text-font"]) ? (layout["text-font"] as unknown[]).map(String) : [];
-  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
-  const offset = valueToNumbers(layout["text-offset"]);
-  // text-variable-anchor lists alternatives the collision pass chooses from; the first one is the preferred placement
-  const variable = Array.isArray(layout["text-variable-anchor"]) ? valueToString((layout["text-variable-anchor"] as unknown[])[0]) : undefined;
-  const placement = valueToString(layout["symbol-placement"]) ?? "point";
-  const rotation = valueToString(layout["text-rotation-alignment"]) ?? "auto";
-  return {
-    alongLine: placement !== "point" && rotation !== "viewport",
-    fontStack,
-    size: num(layout["text-size"]),
-    color: valueToString(paint["text-color"]),
-    haloColor: valueToString(paint["text-halo-color"]),
-    haloWidth: num(paint["text-halo-width"]),
-    transform: valueToString(layout["text-transform"]),
-    letterSpacing: num(layout["text-letter-spacing"]),
-    anchor: valueToString(layout["text-anchor"]) ?? variable,
-    offset: offset && offset.length >= 2 ? [offset[0], offset[1]] : undefined,
-    justify: valueToString(layout["text-justify"]),
-    maxWidth: num(layout["text-max-width"]),
-    lineHeight: num(layout["text-line-height"]),
-  };
+  return textStyleFromLayer(feature.layer.layout ?? {}, feature.layer.paint ?? {});
 }
 
 type InstanceCandidate = {

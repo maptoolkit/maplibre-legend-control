@@ -20,6 +20,8 @@ const CLASS = "maplibre-legend-control";
 const SWATCH_W = 64;
 const SWATCH_H = 26;
 const MAX_ICON = 24;
+/** How far a feature reaches beyond a name set on it, in px — the stylesheet's `--legend-control-symbol-reach`. */
+const SYMBOL_REACH = 10;
 
 const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -317,8 +319,22 @@ function stretchX(shape: SVGElement, scaleX: number): void {
   shape.setAttribute("vector-effect", "non-scaling-stroke");
 }
 
+/**
+ * A line row, with a label stacked into it (tag `attachesTo`) set on the line
+ * itself — the contour's elevation on the contour: along the line where the
+ * map places it so, else straight across its middle. The box grows with the
+ * name plus the reach; without a label it is the plain bend.
+ */
 export function createLineSwatch(layers: SwatchLayer[], variant = 0): HTMLElement {
-  return lineSwatchParts(layers, variant).box;
+  const label = layers.find((l) => l.type === "symbol" && l.role === "label");
+  const name = label ? valueToString(label.layout["text-field"])?.trim() : undefined;
+  if (!label || !name) return lineSwatchParts(layers, variant).box;
+  const text = textStyleFromLayer(label.layout, label.paint);
+  const parts = lineSwatchParts(layers, variant, { width: nameWidth(name, text) + 2 * SYMBOL_REACH, readable: true });
+  if (text.alongLine) setNameAlongLine(parts, name, text);
+  else setNameStraight(parts, name, text);
+  if (parts.width > SWATCH_W) parts.box.style.width = `${parts.width}px`;
+  return parts.box;
 }
 
 /** How a fill swatch is shaped — by what the layer depicts. */
@@ -564,6 +580,32 @@ function followsLine(layout: Record<string, unknown>, kind: "text" | "icon"): bo
   return placement !== "point" && (valueToString(layout[`${kind}-rotation-alignment`]) ?? "auto") !== "viewport";
 }
 
+/** The text style of a symbol layer from its evaluated layout and paint, the way the map draws the label. */
+export function textStyleFromLayer(layout: Record<string, unknown>, paint: Record<string, unknown>): TextStyle {
+  const fontStack = Array.isArray(layout["text-font"]) ? (layout["text-font"] as unknown[]).map(String) : [];
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+  const offset = valueToNumbers(layout["text-offset"]);
+  // text-variable-anchor lists alternatives the collision pass chooses from; the first one is the preferred placement
+  const variable = Array.isArray(layout["text-variable-anchor"]) ? valueToString((layout["text-variable-anchor"] as unknown[])[0]) : undefined;
+  const placement = valueToString(layout["symbol-placement"]) ?? "point";
+  const rotation = valueToString(layout["text-rotation-alignment"]) ?? "auto";
+  return {
+    alongLine: placement !== "point" && rotation !== "viewport",
+    fontStack,
+    size: n(layout["text-size"]),
+    color: valueToString(paint["text-color"]),
+    haloColor: valueToString(paint["text-halo-color"]),
+    haloWidth: n(paint["text-halo-width"]),
+    transform: valueToString(layout["text-transform"]),
+    letterSpacing: n(layout["text-letter-spacing"]),
+    anchor: valueToString(layout["text-anchor"]) ?? variable,
+    offset: offset && offset.length >= 2 ? [offset[0], offset[1]] : undefined,
+    justify: valueToString(layout["text-justify"]),
+    maxWidth: n(layout["text-max-width"]),
+    lineHeight: n(layout["text-line-height"]),
+  };
+}
+
 let measure: CanvasRenderingContext2D | null | undefined;
 
 /**
@@ -691,8 +733,20 @@ function setNameAlongLine(parts: LineSwatchParts, name: string, text: TextStyle)
   parts.svg.append(guide, textEl);
 }
 
-/** How far a feature reaches beyond the symbol on it, in px — the stylesheet's `--legend-control-symbol-reach`. */
-const SYMBOL_REACH = 10;
+/** The name set straight across the swatch's middle, as the map sets a point-placed label: upright, centred, `text-offset` as a shift. */
+function setNameStraight(parts: LineSwatchParts, name: string, text: TextStyle): void {
+  if (!parts.svg) return;
+  const textEl = document.createElementNS(SVG_NS, "text");
+  textEl.setAttribute("class", `${CLASS}-text-on-path`);
+  textEl.setAttribute("text-anchor", "middle");
+  textEl.setAttribute("dominant-baseline", "central");
+  const size = applySvgTextStyle(textEl, text);
+  const [ox = 0, oy = 0] = text.offset ?? [0, 0];
+  textEl.setAttribute("x", String(round2(parts.width / 2 + ox * size)));
+  textEl.setAttribute("y", String(round2(SWATCH_H / 2 + oy * size)));
+  textEl.textContent = name.replace(/\s*\n\s*/g, " ");
+  parts.svg.appendChild(textEl);
+}
 
 /**
  * A symbol on the feature it sits on: the anchor entry's swatch under the
