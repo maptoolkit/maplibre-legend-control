@@ -296,8 +296,12 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
   };
 
   /**
-   * How well a copy shows its overlay: no other overlay in its stack counts far
-   * more than a long stack, so a cleaner stretch always wins over a busier one.
+   * How well a copy shows its overlay, in tiers: no other overlay in its stack
+   * first (a cleaner stretch always beats a busier one), then a road drawn
+   * under the band at all (a bare band is the last resort), then a road at
+   * ground level rather than crossing copies (a bridge's blur and shadow are
+   * no road to show the route on, however many layers they add), then the
+   * fullest stack.
    */
   const overlayScore = (copy: { feature: RenderedFeature; tag: LegendLayerTag }) => {
     const stack = stackable(copy.feature, copy.tag.group!);
@@ -305,7 +309,9 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       const tag = tagOf(other);
       return tag?.overlay && tag.role === "main" && other.layer.id !== copy.feature.layer.id;
     }).length;
-    return (others ? 0 : 1000) + stack.length;
+    const under = stack.length > 1;
+    const crossing = stack.some((other) => tagOf(other)?.crossing);
+    return (others ? 0 : 1000) + (under ? 100 : 0) + (crossing ? 0 : 10) + Math.min(stack.length, 9);
   };
 
   // Class entries: one main copy represents the entry — the first ground-level

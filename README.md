@@ -86,10 +86,10 @@ evaluated paint and layout, and builds:
   hiking band together with the path it runs on. Of the rendered stretches the
   entry takes the one that shows it best: first one that carries no second
   overlay, so a cycle route is shown on a plain road rather than on a cycle lane
-  unless every stretch in view shares its way, then the one with the fullest
-  stack. Where a stretch runs over a bridge or through a tunnel its crossing
-  copies are stacked — otherwise the band would stand alone although the map
-  draws a road under it. Fills are polygons in one of
+  unless every stretch in view shares its way, then one whose road is drawn at
+  ground level, then the one with the fullest stack. Only where every stretch in
+  view runs over a bridge or through a tunnel are the crossing copies stacked —
+  otherwise the band would stand alone although the map draws a road under it. Fills are polygons in one of
   three shape families, picked by what the layer depicts — smooth, gently wavy
   outlines that still tend to the rectangle for natural areas and waters,
   straight-edged parcels for landuse, orthogonal footprints for buildings —

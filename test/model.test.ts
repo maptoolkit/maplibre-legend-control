@@ -135,6 +135,43 @@ describe("buildLegendModel", () => {
     expect(entry("road:path")?.swatch.map((l) => l.id)).toEqual(["road_path_casing", "road_path"]);
   });
 
+  it("prefers a ground-level stretch over a bridge stretch even when the bridge stacks more layers", () => {
+    const KEY = "maptoolkit:legend";
+    const copy = (id: string, tag: Record<string, unknown>, featureId: number, x: number): RenderedFeature => ({
+      id: featureId,
+      layer: { id, type: "line", metadata: { [KEY]: { group: "road", ...tag } }, paint: { "line-color": "rgba(90,90,90,1)", "line-width": 2 }, layout: {} },
+      properties: { type: "path" },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [x, 150],
+          [x + 40, 150],
+        ],
+      },
+    });
+    const order = new Map([
+      ["road_path", 1],
+      ["road_path_blur_bridge", 2],
+      ["road_path_bridge", 3],
+      ["road_cycling_route_mtb", 4],
+    ]);
+    const mtb = { role: "main", key: "cycling_route_mtb", overlay: true };
+    // the bridge stretch comes first in query order and stacks three layers, the plain path only two
+    const bridge = [
+      copy("road_cycling_route_mtb", mtb, 2, 300),
+      copy("road_path_bridge", { role: "main", key: "path", crossing: "bridge" }, 2, 300),
+      copy("road_path_blur_bridge", { role: "blur", attachesTo: ["road_path_bridge"], crossing: "bridge" }, 2, 300),
+    ];
+    const ground = [copy("road_cycling_route_mtb", mtb, 1, 100), copy("road_path", { role: "main", key: "path" }, 1, 100)];
+    const stackOf = (list: RenderedFeature[]) =>
+      buildLegendModel({ features: list, manifest: {}, layerOrder: order, language: "de", viewport })
+        .groups.flatMap((g) => g.entries)
+        .find((e) => e.key === "road:cycling_route_mtb")!
+        .swatch.map((l) => l.id);
+    expect(stackOf([...bridge, ...ground])).toEqual(["road_path", "road_cycling_route_mtb"]); // no bridge blur under the route
+    expect(stackOf(bridge)).toEqual(["road_path_blur_bridge", "road_path_bridge", "road_cycling_route_mtb"]); // only the bridge in view: its copies, not a bare band
+  });
+
   it("only falls back to a bridge/tunnel copy when nothing else is rendered", () => {
     const bridgeOnly = features.filter((f) => f.layer.id.endsWith("_bridge"));
     const m = build({ features: bridgeOnly });
