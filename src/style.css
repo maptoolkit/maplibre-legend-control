@@ -28,6 +28,9 @@
   --legend-control-width: 280px;
   --legend-control-swatch-width: 64px;
   --legend-control-swatch-height: 26px;
+  /* how far a feature reaches beyond the symbol drawn on it */
+  --legend-control-symbol-reach: 10px;
+  --legend-control-symbol-reach-y: 4px;
   --legend-control-row-height: 32px;
   --legend-control-toggle-size: 29px; /* MapLibre's control button */
 
@@ -225,23 +228,37 @@
   text-align: center;
   color: var(--legend-control-color-fg-strong);
 }
-/* a symbol on the feature it sits on: the feature's swatch stretched under it */
+/* A symbol on the feature it sits on: the symbol sizes the box, the padding
+   is the feature's reach beyond it, and the feature's swatch fills the whole
+   padding box — a line runs on past both ends of the name, a surface encloses
+   it on every side. */
 .maplibre-legend-control .maplibre-legend-control-symbol-on {
+  position: relative;
   display: inline-grid;
   align-items: center;
   justify-items: center;
+  box-sizing: border-box;
   min-width: var(--legend-control-swatch-width);
+  min-height: var(--legend-control-swatch-height);
+  padding: 0 var(--legend-control-symbol-reach);
 }
-.maplibre-legend-control .maplibre-legend-control-symbol-on > * {
-  grid-area: 1 / 1;
-  position: relative; /* both positioned: the symbol, later in the DOM, paints on top */
+.maplibre-legend-control .maplibre-legend-control-symbol-on-fill {
+  padding: var(--legend-control-symbol-reach-y) var(--legend-control-symbol-reach);
 }
 .maplibre-legend-control .maplibre-legend-control-symbol-on > .maplibre-legend-control-swatch {
-  width: 100%;
-  justify-self: stretch;
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-on > .maplibre-legend-control-symbol {
+  position: relative; /* positioned after the swatch: paints on top of it */
 }
 .maplibre-legend-control .maplibre-legend-control-symbol-on svg {
   width: 100%;
+}
+.maplibre-legend-control .maplibre-legend-control-symbol-on-fill svg {
+  height: 100%;
 }
 /* icon-text-fit: the icon is stretched behind the text and the padding keeps it clear */
 .maplibre-legend-control .maplibre-legend-control-symbol-fitted {

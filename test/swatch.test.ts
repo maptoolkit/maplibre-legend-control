@@ -283,6 +283,7 @@ describe("a symbol on its feature's swatch", () => {
   it("draws the feature's line under the symbol and lets it stretch without thickening the strokes", () => {
     const box = createSymbolOnSwatch({ name: "Nordalpenweg", text: { fontStack: ["Rosario Bold"], size: 12 }, anchor: { swatch: [casing, road], variant: 3 } });
     expect(box.classList.contains("maplibre-legend-control-symbol-on")).toBe(true);
+    expect(box.classList.contains("maplibre-legend-control-symbol-on-line")).toBe(true); // runs on past the name's ends
     const [swatch, symbol] = [...box.children] as HTMLElement[];
     expect(swatch.classList.contains("maplibre-legend-control-swatch-line")).toBe(true);
     expect(symbol.classList.contains("maplibre-legend-control-symbol")).toBe(true); // the symbol comes last: it paints on top
@@ -291,6 +292,13 @@ describe("a symbol on its feature's swatch", () => {
     expect(svg.getAttribute("preserveAspectRatio")).toBe("none"); // the shape follows a wide name…
     for (const path of svg.querySelectorAll("path")) expect(path.getAttribute("vector-effect")).toBe("non-scaling-stroke"); // …the strokes do not
     expect(svg.querySelectorAll("path.maplibre-legend-control-stroke")).toHaveLength(2); // casing and road, as in the feature's own row
+  });
+
+  it("marks a surface, which encloses the name on every side", () => {
+    const lake = { id: "water_area_inland", type: "fill", role: "main", order: 1, paint: { "fill-color": "rgba(120,170,220,1)" }, layout: {} };
+    const box = createSymbolOnSwatch({ name: "Neusiedler See", text: { fontStack: ["Rosario Italic"] }, anchor: { swatch: [lake], variant: 0 } });
+    expect(box.classList.contains("maplibre-legend-control-symbol-on-fill")).toBe(true);
+    expect(box.querySelector("svg")?.getAttribute("preserveAspectRatio")).toBe("none");
   });
 
   it("uses the same shape as the feature's row", () => {

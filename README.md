@@ -118,9 +118,11 @@ evaluated paint and layout, and builds:
   route, a river's name on its waterway) is drawn on that feature's swatch
   when the feature is in view — the very stack of the feature's own row, in
   its shape, stretched under a wider name with the strokes keeping their
-  width — preferring the anchor that drew the same feature, then the entry the
-  symbol's own values pick, then the first in view; with none in view the
-  symbol stands alone.
+  width, and reaching a little beyond it (`--legend-control-symbol-reach`,
+  `--legend-control-symbol-reach-y`): a line runs on past both ends of the
+  name, a surface encloses it on every side. Of several anchors in view the
+  one that drew the same feature wins, then the entry the symbol's own values
+  pick, then the first; with none in view the symbol stands alone.
 
 Hairlines separate the two columns and the groups: a trace of the text colour,
 so they stay faint on whatever ground the style paints

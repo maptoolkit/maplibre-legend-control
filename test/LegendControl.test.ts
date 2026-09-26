@@ -184,6 +184,11 @@ describe("LegendControl", () => {
     expect(on).not.toBeNull();
     expect(on.querySelector(".maplibre-legend-control-swatch-line")).not.toBeNull(); // the motorway's stack
     expect(on.querySelector(".maplibre-legend-control-symbol-text")?.textContent).toBe("A22"); // the shield on it
+    // the road reaches beyond the shield: the symbol sizes the box, the padding is the reach, the swatch fills it all
+    const css = readFileSync(join(process.cwd(), "src/style.css"), "utf8");
+    expect(css).toMatch(/symbol-on\s*\{[^}]*padding:\s*0 var\(--legend-control-symbol-reach\)/);
+    expect(css).toMatch(/symbol-on-fill\s*\{[^}]*padding:\s*var\(--legend-control-symbol-reach-y\) var\(--legend-control-symbol-reach\)/);
+    expect(css).toMatch(/symbol-on > \.maplibre-legend-control-swatch\s*\{[^}]*inset:\s*0/);
     // a place name has nothing to sit on: the symbol alone
     const place = container.querySelector('[data-key="place:town"] .maplibre-legend-control-visual') as HTMLElement;
     expect(place.querySelector(".maplibre-legend-control-symbol-on")).toBeNull();
