@@ -389,9 +389,9 @@ describe("a name along its line", () => {
 
   it("turns an arrow into the direction of the line at its middle", () => {
     const arrow = {
-      id: "road_minor_oneway_arrows",
+      id: "road_minor_oneway_symbol",
       type: "symbol",
-      role: "arrows",
+      role: "symbol",
       order: 6,
       paint: {},
       layout: { "icon-image": "sdf:arrow", "symbol-placement": "line" },

@@ -367,7 +367,7 @@ describe("a symbol on its feature", () => {
     ["road_path_mountain", 2],
     ["road_minor", 3],
     ["road_path_scale_label", 9],
-    ["road_minor_oneway_arrows", 10],
+    ["road_minor_oneway_symbol", 10],
   ]);
   const model = (features: RenderedFeature[]) => buildLegendModel({ features, manifest: {}, layerOrder: order, language: "de", viewport });
   const find = (features: RenderedFeature[], key: string) =>
@@ -405,8 +405,8 @@ describe("a symbol on its feature", () => {
     const byValue = [{ property: "subtype", values: { pedestrian: "minor_pedestrian" } }];
     const street = line("road_minor", { role: "main", key: "minor", keyByValue: byValue }, { type: "minor" }, 1);
     const zone = line("road_minor", { role: "main", key: "minor", keyByValue: byValue }, { type: "minor", subtype: "pedestrian" }, 2, 300);
-    const arrow = label("road_minor_oneway_arrows", { role: "arrows", key: "minor_oneway_arrows", anchors: ["road_minor"] }, { subtype: "pedestrian" }, 5);
-    expect(find([street, zone, arrow], "road:minor_oneway_arrows")?.anchor?.key).toBe("road:minor_pedestrian");
+    const arrow = label("road_minor_oneway_symbol", { role: "symbol", key: "minor_oneway_symbol", anchors: ["road_minor"] }, { subtype: "pedestrian" }, 5);
+    expect(find([street, zone, arrow], "road:minor_oneway_symbol")?.anchor?.key).toBe("road:minor_pedestrian");
   });
 
   it("routes a feature by the presence of a property with the `*` value", () => {
