@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maptoolkit Legende – Demo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-style-control@1.1.1/dist/maplibre-style-control.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-logo-control@1.0.0/dist/maplibre-logo-control.css" />
+    <link rel="stylesheet" href="./maplibre-legend-control.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      #map {
+        position: absolute;
+        inset: 0;
+      }
+      #status {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        color: #444;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 8px 14px;
+        border-radius: 6px;
+        pointer-events: none;
+      }
+    </style>
+    <!-- The controls import "maplibre-gl" by its bare name: one copy for all of them. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "maplibre-gl": "https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.mjs",
+          "@maptoolkit/maplibre-style-control": "https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-style-control@1.1.1/dist/maplibre-style-control.js",
+          "@maptoolkit/maplibre-logo-control": "https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-logo-control@1.0.0/dist/maplibre-logo-control.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="status">Styles werden generiert …</div>
+    <script type="module">
+      import maplibregl from "maplibre-gl";
+      import { StyleControl } from "@maptoolkit/maplibre-style-control";
+      import { LogoControl } from "@maptoolkit/maplibre-logo-control";
+      // Local builds, uploaded next to this page: the legend control and
+      // style-family-js (style-core) as the style editor bundles them. Neither
+      // is published yet with the legend metadata.
+      import { LegendControl } from "./maplibre-legend-control.js";
+      import { Style } from "./style-core.min.js";
+
+      const API_KEY = "iib";
+      const FAMILY = "https://styles.maptoolkit.net/maptoolkit/maptoolkit-v3.json";
+      // The seven child styles of the family, generated here from its raw
+      // envelope (master config + overlays) with the local style-family-js, so
+      // the layer ids and the legend manifest are the current ones.
+      const CHILDREN = [
+        ["summer", "Sommer"],
+        ["winter", "Winter"],
+        ["light", "Hell"],
+        ["dark", "Dunkel"],
+        ["cycling", "Rad"],
+        ["hiking", "Wandern"],
+        ["street", "Straße"],
+      ];
+
+      const status = document.getElementById("status");
+      try {
+        const raw = await (await fetch(`${FAMILY}?api_key=${API_KEY}&mode=raw`)).json();
+        const family = await Style.create(raw);
+        const styles = CHILDREN.map(([id, label]) => ({
+          id: label,
+          value: family.generateExportReadyStateStyle(id),
+          image: `https://styles.maptoolkit.org/${id}.webp`,
+        }));
+
+        const map = new maplibregl.Map({
+          container: "map",
+          style: styles[0].value,
+          center: [11.39, 47.27],
+          zoom: 12.5,
+          hash: true,
+          // the styles service would bake the key into the tile urls; here the page does
+          transformRequest: (url) => {
+            if (/^https:\/\/[a-z0-9-]+\.maptoolkit\.net\//.test(url) && !url.includes("api_key=")) {
+              return { url: url + (url.includes("?") ? "&" : "?") + `api_key=${API_KEY}` };
+            }
+          },
+        });
+        map.addControl(new maplibregl.NavigationControl(), "top-right");
+        map.addControl(new LogoControl());
+        map.addControl(new StyleControl({ styles, active: styles[0].id }));
+        map.addControl(new LegendControl(), "top-left");
+        status.remove();
+      } catch (error) {
+        status.textContent = `Fehler: ${error.message}`;
+        console.error(error);
+      }
+    </script>
+  </body>
+</html>

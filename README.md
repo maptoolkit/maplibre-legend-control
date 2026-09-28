@@ -276,3 +276,17 @@ The demo loads a public Maptoolkit style by default. To develop against a style 
 ## License
 
 **maplibre-legend-control** is open-source under the [BSD 3-Clause License](LICENSE).
+
+## Hosted demo
+
+[demos.maptoolkit.net/legend/index.html](https://demos.maptoolkit.net/legend/index.html)
+is a plain page ([demo/hosted/index.html](demo/hosted/index.html)) that loads
+MapLibre and the published style and logo controls from jsDelivr through an
+import map, and this control's dist bundle plus the style editor's style-core
+bundle (style-family-js) from its own folder — the two are not published yet
+with the legend metadata. The page fetches the raw envelope of the
+`maptoolkit-v3` style family from styles.maptoolkit.net and generates its
+seven child styles in the browser, so their layer ids and legend manifest are
+the current ones. `demo/hosted/upload.sh` puts the four files into the demos
+bucket (Hetzner Object Storage) with curl's SigV4 signing; it needs
+`DEMOS_S3_KEY`/`DEMOS_S3_SECRET`.
