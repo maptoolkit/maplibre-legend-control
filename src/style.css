@@ -26,6 +26,8 @@
   --legend-control-color-fg-muted: #656776;
   --legend-control-color-primary: #4054a5;
   --legend-control-width: 280px;
+  --legend-control-label-font-size: 12px;
+  --legend-control-label-max-width: 22em;
   --legend-control-swatch-width: 64px;
   --legend-control-swatch-height: 26px;
   /* how far a feature reaches beyond the symbol drawn on it */
@@ -145,6 +147,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-align: center; /* over both columns */
   color: var(--legend-control-color-fg-muted);
 }
 .maplibre-legend-control .maplibre-legend-control-group + .maplibre-legend-control-group > .maplibre-legend-control-group-name {
@@ -195,12 +198,12 @@
   min-height: var(--legend-control-row-height);
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  /* the column rule: one segment per row, so it runs through a group and
-     breaks where a heading spans both columns */
-  padding: 3px 0 3px var(--legend-control-space-3);
-  border-left: 1px solid var(--legend-control-rule);
-  text-align: right;
+  justify-content: flex-start;
+  padding: 3px 0;
+  /* a long description wraps instead of widening the panel without end */
+  max-width: var(--legend-control-label-max-width);
+  font-size: var(--legend-control-label-font-size);
+  text-align: left;
   color: var(--legend-control-color-fg-muted);
 }
 
@@ -210,7 +213,7 @@
   align-items: center;
   justify-content: center;
   /* a name that cannot be broken sizes the column (see -symbol-text): no cap
-     here, or the column stays narrow and the name runs over the column rule */
+     here, or the column stays narrow and the name runs into the description */
   min-width: min-content;
 }
 .maplibre-legend-control .maplibre-legend-control-symbol-below {
