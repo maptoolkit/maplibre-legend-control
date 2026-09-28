@@ -99,28 +99,27 @@
   color: var(--legend-control-color-fg-strong);
 }
 
-/* in a map corner the panel opens beside the button (below/above it in the
-   centre slots), like maplibre-style-control; the control raises its corner
-   while open so the panel overlays the neighbouring controls */
-.maplibregl-ctrl-top-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
-  position: absolute;
-  top: 0;
-  left: calc(var(--legend-control-toggle-size) + 10px);
-}
+/* In a map corner the panel opens below the button (top corners) or above it
+   (bottom corners), aligned with the button's outer edge, so the button keeps
+   its place whether it shows the word or the icon; the control raises its
+   corner while open so the panel overlays the neighbouring controls. */
+.maplibregl-ctrl-top-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel,
 .maplibregl-ctrl-top-right .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
   position: absolute;
-  top: 0;
-  right: calc(var(--legend-control-toggle-size) + 10px);
+  top: calc(var(--legend-control-toggle-size) + 10px);
 }
-.maplibregl-ctrl-bottom-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
-  position: absolute;
-  bottom: 0;
-  left: calc(var(--legend-control-toggle-size) + 10px);
-}
+.maplibregl-ctrl-bottom-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel,
 .maplibregl-ctrl-bottom-right .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
   position: absolute;
-  bottom: 0;
-  right: calc(var(--legend-control-toggle-size) + 10px);
+  bottom: calc(var(--legend-control-toggle-size) + 10px);
+}
+.maplibregl-ctrl-top-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel,
+.maplibregl-ctrl-bottom-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  left: 0;
+}
+.maplibregl-ctrl-top-right .maplibre-legend-control-with-toggle .maplibre-legend-control-panel,
+.maplibregl-ctrl-bottom-right .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  right: 0;
 }
 .maplibregl-ctrl-top-center .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
   position: absolute;

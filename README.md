@@ -27,7 +27,7 @@ const map = new maplibregl.Map({ container: "map", style, center, zoom });
 map.addControl(new LegendControl());
 ```
 
-By default the control is placed in the top-right corner; pass a position to `addControl` to change that:
+By default the control is placed in the bottom-left corner, above the Maptoolkit logo when it is added after the logo control (MapLibre stacks a bottom corner upwards); pass a position to `addControl` to change that:
 
 ```js
 map.addControl(new LegendControl(), "top-left");
@@ -256,10 +256,10 @@ names and swatches sit on the same ground as on the map; on a dark background
 the text colours switch to light (`.maplibre-legend-control-dark`). Pass
 `background: "<css colour>"` to fix it instead. The toggle button is a
 MapLibre control button (`.maplibregl-ctrl-group`, so it looks like the
-navigation buttons next to it); in a map corner the panel opens beside it —
-left of the button in the right corners, right of it in the left corners,
-below/above in the centre slots — overlaying the neighbouring controls while
-open, like `maplibre-style-control`. The list scrolls with a thin
+navigation buttons next to it); in a map corner the panel opens below it in the
+top corners and above it in the bottom corners, aligned with the button's outer
+edge, so the button keeps its place with the word or the icon — overlaying the
+neighbouring controls while open, like `maplibre-style-control`. The list scrolls with a thin
 native scrollbar (`scrollbar-width: thin`) whose thumb is coloured for the
 panel's ground (`--legend-control-scrollbar-thumb`, light on dark backgrounds).
 

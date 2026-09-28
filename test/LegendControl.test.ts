@@ -223,6 +223,12 @@ describe("LegendControl", () => {
     vi.runAllTimers();
     const panel = container.querySelector(".maplibre-legend-control-panel") as HTMLElement;
     expect(panel.style.maxWidth).toBe("380px"); // no layout yet (jsdom): the estimate, map width − 20
+    // the stylesheet opens the panel below the button in the top corners and above it in the bottom corners
+    const css = readFileSync(join(process.cwd(), "src/style.css"), "utf8");
+    expect(css).toMatch(/ctrl-top-left [^{]*-panel,\s*\.maplibregl-ctrl-top-right [^{]*-panel \{[^}]*top: calc\(var\(--legend-control-toggle-size\) \+ 10px\)/);
+    expect(css).toMatch(
+      /ctrl-bottom-left [^{]*-panel,\s*\.maplibregl-ctrl-bottom-right [^{]*-panel \{[^}]*bottom: calc\(var\(--legend-control-toggle-size\) \+ 10px\)/,
+    );
     // mounted 62 px into a 400 px map, as the style editor's panel column does: the room ends at the map's right edge
     const rect = (left: number, width: number) =>
       ({ left, right: left + width, width, top: 0, bottom: 0, height: 0, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
@@ -454,7 +460,7 @@ describe("LegendControl", () => {
     map._fire("idle"); // must not throw or schedule anything
   });
 
-  it("defaults to the top-right position", () => {
-    expect(new LegendControl().getDefaultPosition()).toBe("top-right");
+  it("defaults to the bottom-left position, above the logo", () => {
+    expect(new LegendControl().getDefaultPosition()).toBe("bottom-left");
   });
 });

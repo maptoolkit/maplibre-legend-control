@@ -16,7 +16,7 @@ export type LegendControlOptions = {
   collapsed?: boolean;
   /**
    * Render a MapLibre control button that shows and hides the panel; in a map
-   * corner the panel opens beside it. Hosts with their own trigger (a toolbar
+   * corner the panel opens below or above it. Hosts with their own trigger (a toolbar
    * button) set `false` and use `open()`/`close()`.
    * @defaultValue `true`
    */
@@ -205,9 +205,9 @@ export class LegendControl implements IControl {
   }
 
   getDefaultPosition(): ControlPosition {
-    // Not bottom-left: that corner is taken by the logo control, whose position
-    // is fixed by the attribution requirement.
-    return "top-right";
+    // Bottom-left, above the Maptoolkit logo: MapLibre stacks a bottom corner
+    // upwards, so a control added after the logo sits above it.
+    return "bottom-left";
   }
 
   onAdd(map: Map) {
@@ -448,10 +448,8 @@ export class LegendControl implements IControl {
     let available = width;
     if (width > 0) {
       const corner = /\bmaplibregl-ctrl-(?:top|bottom)-(left|right|center)\b/.exec(this._container.parentElement?.className ?? "")?.[1];
-      // before the panel has a layout (or centred, where its edges move with its width): an estimate —
-      // beside the toggle button in a left/right corner the panel starts a button width further in
-      const beside = Boolean(this._toggleButton) && (corner === "left" || corner === "right");
-      available = width - (beside ? 60 : 20);
+      // before the panel has a layout (or centred, where its edges move with its width): an estimate
+      available = width - 20;
       const mapRect = box.getBoundingClientRect();
       const panelRect = this._panel.getBoundingClientRect();
       if (mapRect.width > 0 && panelRect.width > 0 && corner !== "center") {

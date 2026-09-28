@@ -101,7 +101,9 @@
         map.addControl(new NavigationControl(), "top-right");
         map.addControl(new LogoControl());
         map.addControl(new StyleControl({ styles, active: styles[0].id }));
-        map.addControl(new LegendControl(), "top-left");
+        // two legends to compare the buttons: the icon top-left, the word bottom-left above the logo (its default place)
+        map.addControl(new LegendControl({ button: "icon", collapsed: true }), "top-left");
+        map.addControl(new LegendControl());
         status.remove();
       } catch (error) {
         status.textContent = `Fehler: ${error.message}`;
