@@ -483,6 +483,9 @@ describe("the opacity threshold", () => {
     expect(layerAlpha("symbol", { "icon-opacity": 0.02, "text-opacity": 0.9 }, { "icon-image": "sdf:peak", "text-field": "Peak" })).toBeCloseTo(0.9); // the more opaque part counts
     expect(layerAlpha("symbol", { "text-opacity": 0.03 }, { "text-field": "Weg" })).toBeCloseTo(0.03); // no icon: the text alone
     expect(layerAlpha("hillshade", {})).toBe(1);
+    // MapLibre evaluates a colour to a Color object whose toString is the rgba form — a minor road fading in at z10
+    const faded = { r: 1, g: 1, b: 1, a: 0, toString: () => "rgba(255,255,255,0)" };
+    expect(layerAlpha("line", { "line-color": faded })).toBe(0);
   });
 
   it("drops a row whose every layer is faded out, keeps it when any layer — even a supporting one — is not", () => {

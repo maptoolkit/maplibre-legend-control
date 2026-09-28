@@ -165,7 +165,11 @@ export function geometryAnchor(geometry: GeometryLike): [number, number] | undef
  */
 export function layerAlpha(type: string, paint: Record<string, unknown>, layout: Record<string, unknown> = {}): number {
   const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
-  const colorAlpha = (v: unknown) => (typeof v === "string" ? (parseColor(v)?.[3] ?? 1) : 1);
+  // an evaluated colour is a Color object (its toString is the rgba form), not a string
+  const colorAlpha = (v: unknown) => {
+    const text = valueToString(v);
+    return text ? (parseColor(text)?.[3] ?? 1) : 1;
+  };
   switch (type) {
     case "line":
       return n(paint["line-opacity"]) * colorAlpha(paint["line-color"]);
