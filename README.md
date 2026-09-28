@@ -154,7 +154,7 @@ A hairline separates the groups, a trace of the text colour so it stays faint on
 whatever ground the style paints (`--legend-control-rule`); the group heading is
 centred over both columns. The description on the right is left-aligned, a
 step smaller than the panel text (`--legend-control-label-font-size`) and wraps
-beyond `--legend-control-label-max-width` (22em) instead of widening the panel. Every row follows one rule: **left what the map
+beyond `--legend-control-label-max-width` (12em, about two words of a typical label) instead of widening the panel. Every row follows one rule: **left what the map
 shows, right the explanation** —
 a stroke stack or fill for a class entry, the symbol itself for an instance
 entry; the manifest label (or the humanized key) on the right, right-aligned.
