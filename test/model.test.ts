@@ -62,6 +62,21 @@ describe("buildLegendModel", () => {
     ).toContain("road_major_casing");
   });
 
+  it("sorts a group by the shown feature's rank on request, across types", () => {
+    // the fixtures' places: by manifest order the town comes first; by rank the village row (Staasdorf, rank 9) beats the town (rank 12)
+    const byOrder = build()
+      .groups.find((g) => g.id === "place")!
+      .entries.map((e) => e.key);
+    expect(byOrder).toEqual(["place:town", "place:village"]);
+    const ranked = build({ manifest: { ...manifest, groups: { ...manifest.groups, place: { ...manifest.groups?.place, sort: "rank" } } } });
+    const byRank = ranked.groups.find((g) => g.id === "place")!.entries;
+    expect(byRank.map((e) => [e.key, e.rank])).toEqual([
+      ["place:village", byRank[0].rank],
+      ["place:town", byRank[1].rank],
+    ]);
+    expect(byRank[0].rank!).toBeLessThan(byRank[1].rank!);
+  });
+
   it("resolves an entry's link, plain or per language", () => {
     expect(entry("road:major_dark")?.link).toBe("https://example.org/roads.pdf");
     expect(entry("nature:wood")?.link).toBe("https://example.org/wald"); // language de

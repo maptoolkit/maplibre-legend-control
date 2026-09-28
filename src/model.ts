@@ -479,6 +479,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
       label: pickLabel(manifestEntries[entryKey]?.label, language) ?? humanize(entryKey),
       link: pickLink(manifestEntries[entryKey]?.link, language),
       name: best.name,
+      rank: Number.isFinite(best.rank) ? best.rank : undefined,
       text: textStyleOf(best.feature),
       icon: layout["icon-image"] ? swatchLayerOf(best.feature, "icon", layerOrder) : undefined,
       anchor: on ? { key: on.key, swatch: on.swatch, variant: on.variant } : undefined,
@@ -515,8 +516,12 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     groups.get(entry.group)!.entries.push(entry);
   }
   const collator = new Intl.Collator(language);
-  for (const g of groups.values())
-    g.entries.sort((a, b) => a.order - b.order || collator.compare(a.label, b.label) || collator.compare(a.name ?? "", b.name ?? ""));
+  const byOrder = (a: LegendEntry, b: LegendEntry) => a.order - b.order || collator.compare(a.label, b.label) || collator.compare(a.name ?? "", b.name ?? "");
+  for (const g of groups.values()) {
+    // a group sorted by rank lists the most prominent shown feature first, across types; unranked rows follow by order
+    const byRank = manifestGroups[g.id]?.sort === "rank";
+    g.entries.sort((a, b) => (byRank ? (a.rank ?? Infinity) - (b.rank ?? Infinity) : 0) || byOrder(a, b));
+  }
 
   return { groups: [...groups.values()].sort((a, b) => a.order - b.order || collator.compare(a.label, b.label)) };
 }

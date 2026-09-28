@@ -59,6 +59,12 @@ export type LegendManifestItem = {
   hidden?: boolean;
   /** Entry keys this entry stands for (merges): `place:village` for `place:hamlet`, `place:farm`, … */
   keys?: string[];
+  /**
+   * Groups only. `"rank"` sorts the group's rows by the rank of the feature
+   * each shows (lowest first, across types) instead of by `order` — the POIs
+   * by `rank_new`. Rows without a rank follow, by `order` and label.
+   */
+  sort?: "order" | "rank";
 };
 
 /** The root manifest in `style.metadata["maptoolkit:legend"]`. */
@@ -137,6 +143,8 @@ export type LegendEntry = {
   label: string;
   /** Resolved link of the manifest entry (in the chosen language), shown as the row's info button. */
   link?: string;
+  /** Instance entries: the rank of the shown feature (`rankProperty`), for groups sorted by rank. */
+  rank?: number;
   /** Instance entries: the rendered name of the chosen feature (may be absent for icon-only POIs). */
   name?: string;
   text?: TextStyle;
