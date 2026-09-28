@@ -97,7 +97,7 @@ export const defaultLegendControlOptions: LegendControlOptions = {
   updateDelay: 100,
   maxHeightRatio: 0.6,
   maxNameWidth: { fraction: 0.5, px: 260 },
-  minOpacity: 0.9,
+  minOpacity: 0.1,
   background: "auto",
 };
 
