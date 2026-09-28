@@ -181,6 +181,7 @@ without a tag are ignored. The contract is documented in
 | ---------------- | ------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `collapsed`      | `boolean`                       | `false`                              | Start hidden; the toggle button or `open()` shows the panel, updates are deferred until then.                                                                                                                                                                                                                                               |
 | `toggle`         | `boolean`                       | `true`                               | Render a MapLibre control button that shows and hides the panel; in a map corner the panel opens beside it. Hosts with their own trigger (a toolbar button) set `false`.                                                                                                                                                                    |
+| `button`         | `"text" \| "icon"`              | `"text"`                             | What the toggle button shows: the word for "legend" in the control's language (`LegendControl.Label`), or an icon of a legend row (Material Symbols "event_list", turned so the swatches stand left).                                                                                                                                       |
 | `language`       | `string`                        | `<html lang>`, else browser language | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key.                                                                                                                                                                                                                                          |
 | `edgeBuffer`     | `number`                        | `0.05`                               | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label.                                                                                                                                                                                                        |
 | `groups`         | `string[]`                      | all                                  | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`).                                                                                                                                                                                                                            |
@@ -224,20 +225,28 @@ monospace for SUSE Mono, sans-serif otherwise.
 
 ## Localization
 
-The control reads its UI strings from the map's `locale` table, like MapLibre's built-in controls — `LegendControl.Title` is the panel's accessible name (there is no visible header), `LegendControl.Toggle` the button's label, `LegendControl.Empty` the text shown when nothing is in view, `LegendControl.Info` the tooltip of a row's info button:
+The control reads its UI strings from the map's `locale` table, like MapLibre's
+built-in controls, and fills that table on `onAdd` with the strings of its
+`language` — the languages of the Maptoolkit map maker are covered: English,
+German, Spanish, Italian, French, Hungarian, Czech, Polish, Chinese, Japanese,
+Korean, Hindi and Arabic (`LEGEND_LOCALES`, `legendLocaleFor(language)`). An
+entry the page already set wins, so a single string is overridden like this:
 
 ```js
 const map = new maplibregl.Map({
   container: "map",
   style,
-  locale: {
-    "LegendControl.Title": "Legende",
-    "LegendControl.Toggle": "Legende ein-/ausblenden",
-    "LegendControl.Info": "Mehr dazu",
-    "LegendControl.Empty": "Nichts zu zeigen in diesem Ausschnitt",
-  },
+  locale: { "LegendControl.Label": "Zeichenerklärung" },
 });
 ```
+
+| Key                    | Used for                                                 | English                      |
+| ---------------------- | -------------------------------------------------------- | ---------------------------- |
+| `LegendControl.Label`  | The toggle button's text (`button: "text"`)              | Legend                       |
+| `LegendControl.Title`  | The panel's accessible name (there is no visible header) | Legend                       |
+| `LegendControl.Toggle` | Tooltip and accessible name of the toggle button         | Show or hide the legend      |
+| `LegendControl.Empty`  | Shown when nothing tagged is in view                     | Nothing to show in this view |
+| `LegendControl.Info`   | Tooltip of a row's info button                           | More about this              |
 
 ## Styling
 

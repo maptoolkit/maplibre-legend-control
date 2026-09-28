@@ -73,12 +73,30 @@
 .maplibre-legend-control .maplibre-legend-control-toggle {
   flex: 0 0 auto;
 }
+/* `button: "icon"`: Material Symbols "event_list" (Apache 2.0), turned 180° so the
+   squares stand left and the lines right, like a legend row */
 .maplibre-legend-control .maplibre-legend-control-toggle .maplibregl-ctrl-icon {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%23656776'%3E%3Crect x='3' y='4' width='6' height='4' rx='1'/%3E%3Crect x='11' y='5' width='10' height='2' rx='1'/%3E%3Crect x='3' y='10' width='6' height='4' rx='1'/%3E%3Crect x='11' y='11' width='10' height='2' rx='1'/%3E%3Crect x='3' y='16' width='6' height='4' rx='1'/%3E%3Crect x='11' y='17' width='10' height='2' rx='1'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' width='20' height='20' fill='%23656776'%3E%3Cpath d='M640-120q-33 0-56.5-23.5T560-200v-160q0-33 23.5-56.5T640-440h160q33 0 56.5 23.5T880-360v160q0 33-23.5 56.5T800-120H640Zm0-80h160v-160H640v160ZM80-240v-80h360v80H80Zm560-280q-33 0-56.5-23.5T560-600v-160q0-33 23.5-56.5T640-840h160q33 0 56.5 23.5T880-760v160q0 33-23.5 56.5T800-520H640Zm0-80h160v-160H640v160ZM80-640v-80h360v80H80Z'/%3E%3C/svg%3E");
+  transform: rotate(180deg);
 }
 .maplibre-legend-control .maplibre-legend-control-toggle button:hover .maplibregl-ctrl-icon,
 .maplibre-legend-control .maplibre-legend-control-toggle button[aria-expanded="true"] .maplibregl-ctrl-icon {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%23282932'%3E%3Crect x='3' y='4' width='6' height='4' rx='1'/%3E%3Crect x='11' y='5' width='10' height='2' rx='1'/%3E%3Crect x='3' y='10' width='6' height='4' rx='1'/%3E%3Crect x='11' y='11' width='10' height='2' rx='1'/%3E%3Crect x='3' y='16' width='6' height='4' rx='1'/%3E%3Crect x='11' y='17' width='10' height='2' rx='1'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' width='20' height='20' fill='%23282932'%3E%3Cpath d='M640-120q-33 0-56.5-23.5T560-200v-160q0-33 23.5-56.5T640-440h160q33 0 56.5 23.5T880-360v160q0 33-23.5 56.5T800-120H640Zm0-80h160v-160H640v160ZM80-240v-80h360v80H80Zm560-280q-33 0-56.5-23.5T560-600v-160q0-33 23.5-56.5T640-840h160q33 0 56.5 23.5T880-760v160q0 33-23.5 56.5T800-520H640Zm0-80h160v-160H640v160ZM80-640v-80h360v80H80Z'/%3E%3C/svg%3E");
+}
+/* `button: "text"` (default): the word for "legend", as wide as it needs to be */
+.maplibre-legend-control .maplibre-legend-control-toggle .maplibre-legend-control-toggle-text {
+  width: auto;
+  padding: 0 10px;
+  font-family: var(--legend-control-font-family);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--legend-control-color-fg-muted);
+  white-space: nowrap;
+}
+.maplibre-legend-control .maplibre-legend-control-toggle .maplibre-legend-control-toggle-text:hover,
+.maplibre-legend-control .maplibre-legend-control-toggle .maplibre-legend-control-toggle-text[aria-expanded="true"] {
+  color: var(--legend-control-color-fg-strong);
 }
 
 /* in a map corner the panel opens beside the button (below/above it in the

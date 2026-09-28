@@ -72,11 +72,14 @@ describe("LegendControl", () => {
   it("renders a MapLibre control button that shows and hides the panel", () => {
     const map = createMockMap();
     map._locale["LegendControl.Toggle"] = "Legende ein-/ausblenden";
-    const container = new LegendControl().onAdd(map);
+    const container = new LegendControl({ language: "de" }).onAdd(map);
     expect(container.classList.contains("maplibre-legend-control-with-toggle")).toBe(true);
     const button = container.querySelector(".maplibre-legend-control-toggle.maplibregl-ctrl-group button") as HTMLButtonElement;
-    expect(button.getAttribute("aria-label")).toBe("Legende ein-/ausblenden");
-    expect(button.querySelector(".maplibregl-ctrl-icon")).not.toBeNull();
+    expect(button.getAttribute("aria-label")).toBe("Legende ein-/ausblenden"); // the page's own locale entry wins
+    // the default button is the word for "legend" in the control's language
+    expect(button.textContent).toBe("Legende");
+    expect(button.classList.contains("maplibre-legend-control-toggle-text")).toBe(true);
+    expect(button.querySelector(".maplibregl-ctrl-icon")).toBeNull();
     expect(button.getAttribute("aria-expanded")).toBe("true");
     button.click();
     expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(true);
@@ -84,6 +87,24 @@ describe("LegendControl", () => {
     button.click();
     expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(false);
     expect(button.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("shows an icon instead of the word on request, and speaks the map maker's languages", () => {
+    const icon = new LegendControl({ button: "icon" }).onAdd(createMockMap()).querySelector(".maplibre-legend-control-toggle button")!;
+    expect(icon.querySelector(".maplibregl-ctrl-icon")).not.toBeNull();
+    expect(icon.textContent).toBe("");
+    // every language of the map maker has its own strings; an unknown one falls back to English
+    for (const [language, label, info] of [
+      ["fr", "Légende", "En savoir plus"],
+      ["ja", "凡例", "詳細"],
+      ["ar", "مفتاح الخريطة", "المزيد"],
+      ["xx", "Legend", "More about this"],
+    ]) {
+      const map = createMockMap();
+      new LegendControl({ language }).onAdd(map);
+      expect(map._locale["LegendControl.Label"]).toBe(label);
+      expect(map._locale["LegendControl.Info"]).toBe(info);
+    }
   });
 
   it("keeps the button when the panel is hidden — only a control without a button hides entirely", () => {
@@ -251,7 +272,7 @@ describe("LegendControl", () => {
     expect(info.href).toBe("https://example.org/roads.pdf");
     expect(info.target).toBe("_blank");
     expect(info.rel).toBe("noopener noreferrer");
-    expect(info.getAttribute("aria-label")).toBe("More about this"); // the locale default, overridable via map locale
+    expect(info.getAttribute("aria-label")).toBe("Mehr dazu"); // the control's German strings, overridable via the map locale
     expect(info.querySelector("svg circle")).not.toBeNull();
     expect(road.textContent).toBe("Hauptstraße"); // the button adds no text
     expect(container.querySelector('[data-key="road:minor"] .maplibre-legend-control-info')).toBeNull(); // no link, no button

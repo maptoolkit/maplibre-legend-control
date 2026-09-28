@@ -1,5 +1,6 @@
 import type { Map, IControl, ControlPosition } from "maplibre-gl";
 import { buildLegendModel, tagIn, featureIdentity, valueToString } from "./model";
+import { legendLocaleFor } from "./locales";
 import { createSwatch, createSymbolOnSwatch, createSymbolPreview, type GetImage, type RenderOptions } from "./swatch";
 import { LEGEND_METADATA_KEY, type LegendEntry, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
@@ -20,6 +21,12 @@ export type LegendControlOptions = {
    * @defaultValue `true`
    */
   toggle?: boolean;
+  /**
+   * What the toggle button shows: the word for "legend" in the control's
+   * language (`LegendControl.Label`), or an icon of a legend row.
+   * @defaultValue `"text"`
+   */
+  button?: "text" | "icon";
   /**
    * Language of the entry and group labels (`de`, `en`, …), looked up in the
    * style's legend manifest. Falls back to English, then to the humanized key.
@@ -93,6 +100,7 @@ export type LegendControlOptions = {
 export const defaultLegendControlOptions: LegendControlOptions = {
   collapsed: false,
   toggle: true,
+  button: "text",
   edgeBuffer: 0.05,
   updateDelay: 100,
   maxHeightRatio: 0.6,
@@ -205,11 +213,9 @@ export class LegendControl implements IControl {
   onAdd(map: Map) {
     this._map = map;
 
+    // UI strings in the control's language; an entry the page set in the map's locale wins
     const locale = getMapLocale(map);
-    locale["LegendControl.Title"] ??= "Legend";
-    locale["LegendControl.Empty"] ??= "Nothing to show in this view";
-    locale["LegendControl.Toggle"] ??= "Show or hide the legend";
-    locale["LegendControl.Info"] ??= "More about this";
+    for (const [key, text] of Object.entries(legendLocaleFor(this.options.language ?? detectLanguage()))) locale[key] ??= text;
 
     // a transparent column: [toggle button] + panel (the card)
     this._container = document.createElement("div");
@@ -226,10 +232,16 @@ export class LegendControl implements IControl {
       button.title = getUIString(map, "LegendControl.Toggle");
       button.setAttribute("aria-label", getUIString(map, "LegendControl.Toggle"));
       button.setAttribute("aria-expanded", String(!this.options.collapsed));
-      const icon = document.createElement("span");
-      icon.classList.add("maplibregl-ctrl-icon");
-      icon.setAttribute("aria-hidden", "true");
-      button.appendChild(icon);
+      if (this.options.button === "icon") {
+        // Material Symbols "event_list", turned 180°: swatches left, lines right — a legend row
+        const icon = document.createElement("span");
+        icon.classList.add("maplibregl-ctrl-icon");
+        icon.setAttribute("aria-hidden", "true");
+        button.appendChild(icon);
+      } else {
+        button.classList.add(`${CLASS}-toggle-text`);
+        button.textContent = getUIString(map, "LegendControl.Label");
+      }
       button.addEventListener("click", () => this.toggle());
       group.appendChild(button);
       this._container.appendChild(group);

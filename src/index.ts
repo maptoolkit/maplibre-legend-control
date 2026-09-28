@@ -19,6 +19,8 @@ export {
 export type { FillShapeFamily, LineShapeFamily } from "./swatch";
 export type { CssFont } from "./fonts";
 export { LEGEND_METADATA_KEY } from "./types";
+export { LEGEND_LOCALES, legendLocaleFor } from "./locales";
+export type { LegendLocale } from "./locales";
 export type {
   LegendLayerTag,
   LegendManifest,
