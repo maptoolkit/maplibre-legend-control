@@ -60,6 +60,13 @@ export type LegendControlOptions = {
    */
   maxNameWidth?: { fraction?: number; px?: number } | false;
   /**
+   * Rows none of whose layers reaches this opacity are left out — a fill
+   * fading in between zooms, a stroke at 0.02. The opacity of a layer is its
+   * `*-opacity` times the alpha of its colour. `0` keeps every row.
+   * @defaultValue `0.1`
+   */
+  minOpacity?: number;
+  /**
    * Panel background: `"auto"` takes the style's `background` layer colour at
    * the current zoom (so names and swatches sit on the same ground as on the
    * map), falling back to `hsl(90, 23%, 95%)` when the style has none; any CSS
@@ -90,6 +97,7 @@ export const defaultLegendControlOptions: LegendControlOptions = {
   updateDelay: 100,
   maxHeightRatio: 0.6,
   maxNameWidth: { fraction: 0.5, px: 260 },
+  minOpacity: 0.1,
   background: "auto",
 };
 
@@ -326,6 +334,7 @@ export class LegendControl implements IControl {
       manifest,
       layerOrder,
       tags,
+      minOpacity: this.options.minOpacity,
       language: this.options.language ?? detectLanguage(),
       viewport: { width, height, project: (lngLat) => map.project(lngLat) },
       isFullyVisible: this._fullyVisibleTest(width, height),

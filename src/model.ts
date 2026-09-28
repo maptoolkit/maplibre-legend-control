@@ -11,7 +11,7 @@ import {
   type SwatchLayer,
   type TextStyle,
 } from "./types";
-import { swatchVariantFor, textStyleFromLayer } from "./swatch";
+import { parseColor, swatchVariantFor, textStyleFromLayer } from "./swatch";
 
 /** Viewport geometry the instance selection needs; `project` maps [lng, lat] to CSS pixels. */
 export type Viewport = {
@@ -27,6 +27,13 @@ export type BuildLegendModelInput = {
   manifest?: LegendManifest | null;
   /** Layer id → index in `style.layers`, to stack swatches bottom to top. */
   layerOrder: Map<string, number>;
+  /**
+   * Entries none of whose layers reaches this opacity are left out: a
+   * feature fading in between zooms, a fill at 0.02. The opacity of a layer
+   * is its `*-opacity` times the alpha of its colour, per rendered feature.
+   * @defaultValue `0.1`
+   */
+  minOpacity?: number;
   /**
    * Layer id → legend tag, from the current style sheet. Given, it replaces
    * the tag on the rendered feature's layer, which MapLibre does not refresh
@@ -147,6 +154,33 @@ export function geometryAnchor(geometry: GeometryLike): [number, number] | undef
     }
     default:
       return undefined;
+  }
+}
+
+/**
+ * How opaque a rendered layer copy is: its `*-opacity` times the alpha of its
+ * colour (an `rgba(…, 0.3)` is as faint as `opacity: 0.3`). A symbol counts
+ * the more opaque of the icon and the text it actually has; a pattern fill
+ * its opacity alone.
+ */
+export function layerAlpha(type: string, paint: Record<string, unknown>, layout: Record<string, unknown> = {}): number {
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
+  const colorAlpha = (v: unknown) => (typeof v === "string" ? (parseColor(v)?.[3] ?? 1) : 1);
+  switch (type) {
+    case "line":
+      return n(paint["line-opacity"]) * colorAlpha(paint["line-color"]);
+    case "fill":
+      return n(paint["fill-opacity"]) * (paint["fill-pattern"] ? 1 : colorAlpha(paint["fill-color"]));
+    case "fill-extrusion":
+      return n(paint["fill-extrusion-opacity"]) * (paint["fill-extrusion-pattern"] ? 1 : colorAlpha(paint["fill-extrusion-color"]));
+    case "symbol": {
+      const parts: number[] = [];
+      if (layout["icon-image"]) parts.push(n(paint["icon-opacity"]) * colorAlpha(paint["icon-color"]));
+      if (layout["text-field"]) parts.push(n(paint["text-opacity"]) * colorAlpha(paint["text-color"]));
+      return parts.length ? Math.max(...parts) : 1;
+    }
+    default:
+      return 1;
   }
 }
 
@@ -424,6 +458,8 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     return undefined;
   };
 
+  /** entry key → the symbol layer an instance entry shows (for the opacity check) */
+  const instanceLayers = new Map<string, SwatchLayer>();
   // Pass 3 — one instance entry per key: lowest rank, named before unnamed, then closest to the centre.
   for (const [entryKey, list] of candidates) {
     list.sort((a, b) => a.rank - b.rank || Number(Boolean(b.name)) - Number(Boolean(a.name)) || a.distance - b.distance);
@@ -431,6 +467,7 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
     const { tag } = instanceTags.get(entryKey)!;
     const layout = best.feature.layer.layout ?? {};
     const on = tag.anchors?.length ? anchorEntryFor(tag.anchors, best.feature) : undefined;
+    instanceLayers.set(entryKey, swatchLayerOf(best.feature, tag.role ?? "label", layerOrder));
     entries.set(entryKey, {
       key: entryKey,
       group: tag.group!,
@@ -448,6 +485,17 @@ export function buildLegendModel(input: BuildLegendModelInput): LegendModel {
   }
 
   for (const entry of entries.values()) entry.swatch.sort((a, b) => a.order - b.order);
+
+  // An entry stays when any of its layers — main or supporting — reaches the
+  // opacity threshold; the swatch then shows them all. A row whose every layer
+  // is faded out (a fill between zooms, a stroke at 0.02) says nothing.
+  const minOpacity = input.minOpacity ?? 0.1;
+  if (minOpacity > 0) {
+    for (const [key, entry] of entries) {
+      const layers = entry.kind === "class" ? entry.swatch : [entry.icon, instanceLayers.get(key)].filter((l): l is SwatchLayer => Boolean(l));
+      if (!layers.some((l) => layerAlpha(l.type, l.paint, l.layout) >= minOpacity)) entries.delete(key);
+    }
+  }
 
   // Groups in manifest order, entries in manifest order then by label/name.
   const groups = new Map<string, LegendGroup>();

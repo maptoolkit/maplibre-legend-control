@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLegendModel, geometryAnchor, humanize, pickLabel, valueToNumbers, valueToString } from "../src/model";
+import { buildLegendModel, geometryAnchor, humanize, layerAlpha, pickLabel, valueToNumbers, valueToString } from "../src/model";
 import type { RenderedFeature } from "../src/types";
 import { swatchVariantFor } from "../src/swatch";
 import { features, layerOrder, manifest, queryFixtures, viewport } from "./fixtures";
@@ -443,5 +443,66 @@ describe("a symbol on its feature", () => {
     const row = find([grade], "road:path_scale_label");
     expect(row).toBeDefined();
     expect(row?.anchor).toBeUndefined();
+  });
+});
+
+describe("the opacity threshold", () => {
+  const KEY = "maptoolkit:legend";
+  const copy = (id: string, tag: Record<string, unknown>, paint: Record<string, unknown>, featureId = 1): RenderedFeature => ({
+    id: featureId,
+    layer: {
+      id,
+      type: "line",
+      metadata: { [KEY]: { group: "road", ...tag } },
+      paint: { "line-color": "rgba(90,90,90,1)", "line-width": 2, ...paint },
+      layout: {},
+    },
+    properties: { type: "path" },
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [100, 150],
+        [160, 150],
+      ],
+    },
+  });
+  const order = new Map([
+    ["road_path_casing", 1],
+    ["road_path", 2],
+    ["road_path_label", 3],
+  ]);
+  const keys = (list: RenderedFeature[], minOpacity?: number) =>
+    buildLegendModel({ features: list, manifest: {}, layerOrder: order, language: "de", viewport, minOpacity })
+      .groups.flatMap((g) => g.entries)
+      .map((e) => e.key);
+
+  it("multiplies the layer opacity with the colour's alpha", () => {
+    expect(layerAlpha("line", { "line-opacity": 0.5, "line-color": "rgba(0,0,0,0.5)" })).toBeCloseTo(0.25);
+    expect(layerAlpha("fill", { "fill-color": "rgba(0,0,0,0.05)" })).toBeCloseTo(0.05);
+    expect(layerAlpha("fill", { "fill-pattern": "hatch", "fill-opacity": 0.8 })).toBeCloseTo(0.8); // a pattern has no colour to fade
+    expect(layerAlpha("symbol", { "icon-opacity": 0.02, "text-opacity": 0.9 }, { "icon-image": "sdf:peak", "text-field": "Peak" })).toBeCloseTo(0.9); // the more opaque part counts
+    expect(layerAlpha("symbol", { "text-opacity": 0.03 }, { "text-field": "Weg" })).toBeCloseTo(0.03); // no icon: the text alone
+    expect(layerAlpha("hillshade", {})).toBe(1);
+  });
+
+  it("drops a row whose every layer is faded out, keeps it when any layer — even a supporting one — is not", () => {
+    const faded = copy("road_path", { role: "main", key: "path" }, { "line-opacity": 0.05 });
+    expect(keys([faded])).toEqual([]);
+    const casing = copy("road_path_casing", { role: "casing", attachesTo: ["road_path"] }, { "line-opacity": 1 });
+    const model = buildLegendModel({ features: [faded, casing], manifest: {}, layerOrder: order, language: "de", viewport });
+    const row = model.groups.flatMap((g) => g.entries).find((e) => e.key === "road:path")!;
+    expect(row).toBeDefined();
+    expect(row.swatch.map((l) => l.id)).toEqual(["road_path_casing", "road_path"]); // the whole stack, faded main included
+    // colour alpha counts like opacity; 0 lifts the threshold
+    expect(keys([copy("road_path", { role: "main", key: "path" }, { "line-color": "rgba(90,90,90,0.05)" })])).toEqual([]);
+    expect(keys([faded], 0)).toEqual(["road:path"]);
+  });
+
+  it("applies to instance rows through their own symbol layer", () => {
+    const label = copy("road_path_label", { role: "label", key: "path_label", instance: true }, {});
+    label.layer = { ...label.layer, type: "symbol", paint: { "text-color": "rgba(0,0,0,1)", "text-opacity": 0.03 }, layout: { "text-field": "Weg" } };
+    expect(keys([label])).toEqual([]);
+    label.layer = { ...label.layer, paint: { "text-color": "rgba(0,0,0,1)" } };
+    expect(keys([label])).toEqual(["road:path_label"]);
   });
 });

@@ -37,7 +37,7 @@ function el(tag: string, className: string): HTMLElement {
 }
 
 /** Parse any CSS color the browser understands into RGBA 0..255 (alpha 0..1); `undefined` without canvas support. */
-function parseColor(color: string): [number, number, number, number] | undefined {
+export function parseColor(color: string): [number, number, number, number] | undefined {
   const m = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/.exec(color);
   if (m) return [Number(m[1]), Number(m[2]), Number(m[3]), m[4] === undefined ? 1 : Number(m[4])];
   const canvas = document.createElement("canvas");
