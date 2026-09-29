@@ -177,20 +177,49 @@ without a tag are ignored. The contract is documented in
 
 ## Options
 
-| Option           | Type                            | Default                              | Description                                                                                                                                                                                                                                                                                                                                 |
-| ---------------- | ------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `collapsed`      | `boolean`                       | `false`                              | Start hidden; the toggle button or `open()` shows the panel, updates are deferred until then.                                                                                                                                                                                                                                               |
-| `toggle`         | `boolean`                       | `true`                               | Render a MapLibre control button that shows and hides the panel; in a map corner the panel opens beside it. Hosts with their own trigger (a toolbar button) set `false`.                                                                                                                                                                    |
-| `button`         | `"text" \| "icon"`              | `"text"`                             | What the toggle button shows: the word for "legend" in the control's language (`LegendControl.Label`), or an icon of a legend row (Material Symbols "event_list", turned so the swatches stand left).                                                                                                                                       |
-| `language`       | `string`                        | `<html lang>`, else browser language | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key.                                                                                                                                                                                                                                          |
-| `edgeBuffer`     | `number`                        | `0.05`                               | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label.                                                                                                                                                                                                        |
-| `groups`         | `string[]`                      | all                                  | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`).                                                                                                                                                                                                                            |
-| `updateDelay`    | `number`                        | `100`                                | Debounce in ms between the map's `idle` event and the update.                                                                                                                                                                                                                                                                               |
-| `maxHeightRatio` | `number`                        | `0.6`                                | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width.                                                                                                                                                                            |
-| `maxNameWidth`   | `{ fraction?, px? }` \| `false` | `{ fraction: 0.5, px: 260 }`         | How wide a name in the map font may grow: the smaller of `px` and `fraction` of the room the panel has (the map's width less the panel's offset from the far edge). A word longer than that is cut with an ellipsis, a name set along a line is shortened to fit; below the cap the map's own line wrapping applies. `false` lifts the cap. |
-| `minOpacity`     | `number`                        | `0.1`                                | Rows none of whose layers reaches this opacity are left out — a fill fading in between zooms, a stroke at 0.02. A layer's opacity is its `*-opacity` times the alpha of its colour; if any layer of the row, main or supporting, reaches it, the row shows the whole stack as usual. `0` keeps every row.                                   |
-| `background`     | `"auto" \| string`              | `"auto"`                             | Panel background: the style's `background` layer colour at the current zoom (fallback `hsl(90, 23%, 95%)`), or a fixed CSS colour. Text switches to light on dark backgrounds.                                                                                                                                                              |
-| `fonts`          | `string \| false`               | from the style                       | Stylesheet of the map's web fonts, linked into the page once so names appear in the map's typeface. Maptoolkit styles carry its URL in their legend manifest (`fonts.css`); a string overrides it, `false` links nothing.                                                                                                                   |
+| Option           | Type                                       | Default                                            | Description                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------- | ------------------------------------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collapsed`      | `boolean`                                  | `true` with a button, `false` with `toggle: false` | Start hidden; the button or `open()` shows the panel, updates are deferred until then. Every button variant starts closed; without a button the host opens the control by mounting it.                                                                                                                                                                                 |
+| `toggle`         | `boolean`                                  | `true`                                             | Render a button that shows and hides the panel; in a map corner the panel opens below it (top corners) or above it (bottom corners). Hosts with their own trigger (a toolbar button) set `false`.                                                                                                                                                                      |
+| `button`         | `"icon-text" \| "icon" \| "style-control"` | `"icon-text"`                                      | What the toggle button shows: an icon of a legend row (Material Symbols "event_list", turned so the swatches stand left) followed by the word for "legend" in the control's language (`LegendControl.Label`), or the icon alone. `"style-control"` puts the legend into the style control's panel instead (see [Inside the style control](#inside-the-style-control)). |
+| `styleControl`   | `StyleControl`                             | –                                                  | The `@maptoolkit/maplibre-style-control` instance that hosts the legend with `button: "style-control"`.                                                                                                                                                                                                                                                                |
+| `language`       | `string`                                   | `<html lang>`, else browser language               | Language of the manifest labels (`de`, `en`, …); falls back to English, then to the humanized key.                                                                                                                                                                                                                                                                     |
+| `edgeBuffer`     | `number`                                   | `0.05`                                             | Only labels whose rendered box lies entirely inside the map minus this fraction per side are listed; `0` lists every rendered label.                                                                                                                                                                                                                                   |
+| `groups`         | `string[]`                                 | all                                                | Restrict the legend to these groups (`road`, `water`, `nature`, `border`, `building`, `relief`, `place`, `poi`).                                                                                                                                                                                                                                                       |
+| `updateDelay`    | `number`                                   | `100`                                              | Debounce in ms between the map's `idle` event and the update.                                                                                                                                                                                                                                                                                                          |
+| `maxHeightRatio` | `number`                                   | `0.6`                                              | Maximum panel height as a fraction of the map's height; the list scrolls beyond it. The width follows the content so no label is clipped, up to the map's width.                                                                                                                                                                                                       |
+| `maxNameWidth`   | `{ fraction?, px? }` \| `false`            | `{ fraction: 0.5, px: 260 }`                       | How wide a name in the map font may grow: the smaller of `px` and `fraction` of the room the panel has (the map's width less the panel's offset from the far edge). A word longer than that is cut with an ellipsis, a name set along a line is shortened to fit; below the cap the map's own line wrapping applies. `false` lifts the cap.                            |
+| `minOpacity`     | `number`                                   | `0.1`                                              | Rows none of whose layers reaches this opacity are left out — a fill fading in between zooms, a stroke at 0.02. A layer's opacity is its `*-opacity` times the alpha of its colour; if any layer of the row, main or supporting, reaches it, the row shows the whole stack as usual. `0` keeps every row.                                                              |
+| `background`     | `"auto" \| string`                         | `"auto"`                                           | Panel background: the style's `background` layer colour at the current zoom (fallback `hsl(90, 23%, 95%)`), or a fixed CSS colour. Text switches to light on dark backgrounds.                                                                                                                                                                                         |
+| `fonts`          | `string \| false`                          | from the style                                     | Stylesheet of the map's web fonts, linked into the page once so names appear in the map's typeface. Maptoolkit styles carry its URL in their legend manifest (`fonts.css`); a string overrides it, `false` links nothing.                                                                                                                                              |
+
+## Inside the style control
+
+With `button: "style-control"` there is no legend button in the map corner. The
+legend becomes a row at the foot of the style control's panel, below the styles
+and behind a hairline: the legend icon, the word for "legend" and a chevron. The
+row closes the style panel and opens the legend where the style panel was, with
+the same motion. A click on the style tile brings the style panel back in the
+legend's place; with the style panel open the tile closes it, as before. The tile
+stays lifted while the legend is open, and Escape closes the legend and moves
+the focus to the tile. Only one of the two panels is open at a time. On maps up
+to 768px wide the legend opens above or below the tile instead, so the tile
+stays in reach.
+
+```js
+import { StyleControl } from "@maptoolkit/maplibre-style-control";
+
+const styleControl = new StyleControl({ styles, active: "Summer" });
+map.addControl(styleControl); // first: the legend moves into its panel
+map.addControl(new LegendControl({ button: "style-control", styleControl }));
+```
+
+The style control needs no changes and the package is no dependency. The legend
+relies on its public `close()`, its container (`_container`) and its class names
+(`maplibre-style-control`, `-current`, `-groups`, `-active`); the row takes the
+style panel's `--style-control-*` tokens. Without a style control on the map,
+passed as `styleControl` and added before the legend, the legend warns and shows
+its `"icon-text"` button.
 
 ## Methods
 
@@ -242,7 +271,7 @@ const map = new maplibregl.Map({
 
 | Key                    | Used for                                                 | English                      |
 | ---------------------- | -------------------------------------------------------- | ---------------------------- |
-| `LegendControl.Label`  | The toggle button's text (`button: "text"`)              | Legend                       |
+| `LegendControl.Label`  | The toggle button's text (`button: "icon-text"`)         | Legend                       |
 | `LegendControl.Title`  | The panel's accessible name (there is no visible header) | Legend                       |
 | `LegendControl.Toggle` | Tooltip and accessible name of the toggle button         | Show or hide the legend      |
 | `LegendControl.Empty`  | Shown when nothing tagged is in view                     | Nothing to show in this view |
@@ -254,12 +283,20 @@ The panel takes the map's ground colour: the style's `background` layer at the
 current zoom (`--legend-control-bg-color`, fallback `hsl(90, 23%, 95%)`), so
 names and swatches sit on the same ground as on the map; on a dark background
 the text colours switch to light (`.maplibre-legend-control-dark`). Pass
-`background: "<css colour>"` to fix it instead. The toggle button is a
-MapLibre control button (`.maplibregl-ctrl-group`, so it looks like the
-navigation buttons next to it); in a map corner the panel opens below it in the
-top corners and above it in the bottom corners, aligned with the button's outer
-edge, so the button keeps its place with the word or the icon — overlaying the
-neighbouring controls while open, like `maplibre-style-control`. The list scrolls with a thin
+`background: "<css colour>"` to fix it instead. The toggle button wears the
+Maptoolkit control skin of `maplibre-style-control`: as tall as MapLibre's
+buttons (`--legend-control-toggle-size`, 29px), rounded (`--legend-control-radius`),
+with a soft shadow; it lifts on hover (only where the pointer can hover) and
+stays lifted and tinted while the panel is open (`--legend-control-toggle-bg-active`,
+`--legend-control-toggle-color-active`). Its colours are its own
+(`--legend-control-toggle-bg`, `--legend-control-toggle-color`), so a dark style
+does not turn its text white. In a map corner the panel opens below the button
+in the top corners and above it in the bottom corners, aligned with the button's
+outer edge, so the button keeps its place with or without the word — overlaying
+the neighbouring controls while open, like `maplibre-style-control`. The panel
+fades in and slides 8px from the button's side (`--legend-control-duration`;
+only the fade under `prefers-reduced-motion`), and Escape closes it and returns
+the focus to the button. The list scrolls with a thin
 native scrollbar (`scrollbar-width: thin`) whose thumb is coloured for the
 panel's ground (`--legend-control-scrollbar-thumb`, light on dark backgrounds).
 
@@ -297,7 +334,7 @@ MapLibre and the published style and logo controls from jsDelivr through an
 import map, and this control's dist bundle plus the style editor's style-core
 bundle (style-family-js) from its own folder — the two are not published yet
 with the legend metadata. The page fetches the raw envelope of the
-`maptoolkit-v3` style family from styles.maptoolkit.net and generates its
+`maptoolkit` style family from styles.maptoolkit.net and generates its
 seven child styles in the browser, so their layer ids and legend manifest are
 the current ones. `demo/hosted/upload.sh` puts the four files into the demos
 bucket (Hetzner Object Storage) with curl's SigV4 signing; it needs

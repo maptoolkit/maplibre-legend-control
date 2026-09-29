@@ -5,13 +5,23 @@ import { createSwatch, createSymbolOnSwatch, createSymbolPreview, type GetImage,
 import { LEGEND_METADATA_KEY, type LegendEntry, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
 /**
+ * What the legend needs of a `StyleControl` from `@maptoolkit/maplibre-style-control`
+ * to live in its panel (`button: "style-control"`): its public `close()`. The
+ * control's DOM is found through its container; the package is not a dependency.
+ */
+export type StyleControlLike = {
+  close(): void;
+};
+
+/**
  * Options for configuring the {@link LegendControl}.
  */
 export type LegendControlOptions = {
   /**
-   * Whether the panel starts hidden; the toggle button or `open()` shows it
-   * and updates are deferred until then.
-   * @defaultValue `false`
+   * Whether the panel starts hidden; the button or `open()` shows it and
+   * updates are deferred until then.
+   * @defaultValue `true` with the control's own button, `false` with `toggle: false`
+   * (the host opens the control by mounting it)
    */
   collapsed?: boolean;
   /**
@@ -22,11 +32,20 @@ export type LegendControlOptions = {
    */
   toggle?: boolean;
   /**
-   * What the toggle button shows: the word for "legend" in the control's
-   * language (`LegendControl.Label`), or an icon of a legend row.
-   * @defaultValue `"text"`
+   * What the toggle button shows: an icon of a legend row followed by the
+   * word for "legend" in the control's language (`LegendControl.Label`), or
+   * the icon alone. `"style-control"` puts no button in the corner: the
+   * legend becomes a row at the foot of the style control's panel (pass that
+   * control as `styleControl`, added to the map before the legend), and its
+   * panel opens where the style panel was; a click on the style tile brings
+   * the style panel back. Without a style control on the map it falls back to `"icon-text"`.
+   * @defaultValue `"icon-text"`
    */
-  button?: "text" | "icon";
+  button?: "icon-text" | "icon" | "style-control";
+  /**
+   * The style control whose panel hosts the legend with `button: "style-control"`.
+   */
+  styleControl?: StyleControlLike;
   /**
    * Language of the entry and group labels (`de`, `en`, …), looked up in the
    * style's legend manifest. Falls back to English, then to the humanized key.
@@ -98,9 +117,8 @@ export type LegendControlOptions = {
  * Default options for the {@link LegendControl}.
  */
 export const defaultLegendControlOptions: LegendControlOptions = {
-  collapsed: false,
   toggle: true,
-  button: "text",
+  button: "icon-text",
   edgeBuffer: 0.05,
   updateDelay: 100,
   maxHeightRatio: 0.6,
@@ -113,6 +131,26 @@ export const defaultLegendControlOptions: LegendControlOptions = {
 export const FALLBACK_BACKGROUND = "hsl(90, 23%, 95%)";
 
 const CLASS = "maplibre-legend-control";
+const CORNER = /\bmaplibregl-ctrl-(top|bottom)-(left|right|center)\b/;
+/** maplibre-style-control's class names, the contract of `button: "style-control"` */
+const STYLE = {
+  container: "maplibre-style-control",
+  open: "maplibre-style-control-active",
+  panel: "maplibre-style-control-groups",
+  tile: "maplibre-style-control-current",
+};
+
+/** The style control's own elements the legend hooks into. */
+type StyleHost = { control: StyleControlLike; container: HTMLElement; panel: HTMLElement; tile: HTMLElement };
+
+function styleHostOf(control: StyleControlLike | undefined): StyleHost | undefined {
+  // `_container` is private to StyleControl; read it without depending on the package
+  const container = (control as unknown as { _container?: HTMLElement } | undefined)?._container;
+  if (!control || !container?.isConnected || !container.classList.contains(STYLE.container)) return undefined;
+  const panel = container.querySelector<HTMLElement>(`:scope > .${STYLE.panel}`);
+  const tile = container.querySelector<HTMLElement>(`:scope > .${STYLE.tile}`);
+  return panel && tile ? { control, container, panel, tile } : undefined;
+}
 
 // `_locale`/`_getUIString` are undocumented on Map; cast here so `LegendControl.*`
 // keys work with the same `new Map({ locale })` table as built-in controls.
@@ -186,6 +224,11 @@ export class LegendControl implements IControl {
   private _container?: HTMLElement;
   private _panel?: HTMLElement;
   private _toggleButton?: HTMLButtonElement;
+  /** `button: "style-control"`: the style control hosting the legend, its row, the placeholder MapLibre places */
+  private _host?: StyleHost;
+  private _hostRow?: HTMLElement;
+  private _anchor?: HTMLElement;
+  private _hostObserver?: MutationObserver;
   private _list?: HTMLElement;
   private _timer?: ReturnType<typeof setTimeout>;
   private _model?: LegendModel;
@@ -194,6 +237,28 @@ export class LegendControl implements IControl {
   /** a name set along its line was measured in the fallback font until the webfont arrived */
   private _onFontsLoaded = () => this._scheduleUpdate();
   private _onResize = () => this._fitToMap();
+  /** Escape closes a panel the control's own button opened and hands the focus back to the button. */
+  private _onKeydown = (event: KeyboardEvent) => {
+    const trigger = this._toggleButton ?? this._host?.tile;
+    if (event.key !== "Escape" || !trigger || this._isCollapsed()) return;
+    event.stopPropagation();
+    this.close();
+    trigger.focus();
+  };
+  /**
+   * A click on the style tile while the legend is open brings the style panel
+   * back: the legend closes first (capture phase), then the style control's
+   * own handler finds its panel closed and opens it. With the style panel open
+   * the tile closes it, as it always does.
+   */
+  private _onHostClick = (event: MouseEvent) => {
+    if (this._isCollapsed() || !this._host || !(event.target instanceof Element) || !this._host.tile.contains(event.target)) return;
+    this.close();
+  };
+  /** The style panel opening closes the legend: only one of the two panels is open. */
+  private _onHostMutation = () => {
+    if (this._host?.container.classList.contains(STYLE.open) && !this._isCollapsed()) this.close();
+  };
   /** the current cap on a name's width in px (see `maxNameWidth`), undefined = none */
   private _nameCap?: number;
 
@@ -219,10 +284,21 @@ export class LegendControl implements IControl {
 
     // a transparent column: [toggle button] + panel (the card)
     this._container = document.createElement("div");
-    this._container.classList.add("maplibregl-ctrl", CLASS);
-    if (this.options.collapsed) this._container.classList.add(`${CLASS}-collapsed`);
+    this._container.classList.add(CLASS);
+    const collapsed = this.options.collapsed ?? this.options.toggle !== false;
+    if (collapsed) this._container.classList.add(`${CLASS}-collapsed`);
 
-    if (this.options.toggle !== false) {
+    let hosted = false;
+    if (this.options.toggle !== false && this.options.button === "style-control") {
+      this._host = styleHostOf(this.options.styleControl);
+      if (this._host) hosted = true;
+      else console.warn('LegendControl: button "style-control" needs `styleControl`, added to the map before the legend — showing the legend button instead.');
+    }
+
+    if (hosted) {
+      this._attachToStyleControl(map, collapsed);
+    } else if (this.options.toggle !== false) {
+      this._container.classList.add("maplibregl-ctrl");
       // a MapLibre control button — maplibregl-ctrl-group + .maplibregl-ctrl-icon give it the native look
       this._container.classList.add(`${CLASS}-with-toggle`);
       const group = document.createElement("div");
@@ -231,21 +307,25 @@ export class LegendControl implements IControl {
       button.type = "button";
       button.title = getUIString(map, "LegendControl.Toggle");
       button.setAttribute("aria-label", getUIString(map, "LegendControl.Toggle"));
-      button.setAttribute("aria-expanded", String(!this.options.collapsed));
+      button.setAttribute("aria-expanded", String(!collapsed));
+      // Material Symbols "event_list", turned 180°: swatches left, lines right — a legend row
+      const glyph = document.createElement("span");
+      glyph.classList.add(`${CLASS}-toggle-glyph`);
+      glyph.setAttribute("aria-hidden", "true");
+      button.appendChild(glyph);
       if (this.options.button === "icon") {
-        // Material Symbols "event_list", turned 180°: swatches left, lines right — a legend row
-        const icon = document.createElement("span");
-        icon.classList.add("maplibregl-ctrl-icon");
-        icon.setAttribute("aria-hidden", "true");
-        button.appendChild(icon);
+        button.classList.add(`${CLASS}-toggle-icon`);
       } else {
-        button.classList.add(`${CLASS}-toggle-text`);
-        button.textContent = getUIString(map, "LegendControl.Label");
+        button.classList.add(`${CLASS}-toggle-icon-text`);
+        button.appendChild(document.createTextNode(getUIString(map, "LegendControl.Label")));
       }
       button.addEventListener("click", () => this.toggle());
+      this._container.addEventListener("keydown", this._onKeydown);
       group.appendChild(button);
       this._container.appendChild(group);
       this._toggleButton = button;
+    } else {
+      this._container.classList.add("maplibregl-ctrl");
     }
 
     // the card; no visible header — the title is its accessible name only
@@ -253,6 +333,7 @@ export class LegendControl implements IControl {
     this._panel.classList.add(`${CLASS}-panel`);
     this._panel.setAttribute("role", "region");
     this._panel.setAttribute("aria-label", getUIString(map, "LegendControl.Title"));
+    if (this._host) this._panel.tabIndex = -1; // takes the focus from the style panel's row
     this._list = document.createElement("div");
     this._list.classList.add(`${CLASS}-list`);
     this._panel.appendChild(this._list);
@@ -264,7 +345,53 @@ export class LegendControl implements IControl {
     this._fitToMap();
     this._scheduleUpdate();
 
-    return this._container;
+    // hosted: MapLibre places an empty stand-in in the corner, the legend lives in the style control
+    return this._anchor ?? this._container;
+  }
+
+  /**
+   * `button: "style-control"`: a row "icon · Legend · ›" below the styles,
+   * behind a hairline, opens the legend where the style panel was; the legend
+   * itself (the panel alone) moves into the style control's container.
+   */
+  private _attachToStyleControl(map: Map, collapsed: boolean) {
+    const host = this._host!;
+    const container = this._container!;
+    container.classList.add(`${CLASS}-in-style-control`);
+
+    const row = document.createElement("div");
+    row.classList.add(`${CLASS}-style-row`);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("aria-expanded", String(!collapsed));
+    for (const part of ["glyph", "label", "chevron"]) {
+      const span = document.createElement("span");
+      span.classList.add(`${CLASS}-style-row-${part}`);
+      if (part === "label") span.textContent = getUIString(map, "LegendControl.Label");
+      else span.setAttribute("aria-hidden", "true");
+      button.appendChild(span);
+    }
+    button.addEventListener("click", () => {
+      host.control.close();
+      this.open();
+      // the row just vanished with the style panel: the focus follows the legend
+      this._panel?.focus({ preventScroll: true });
+    });
+    row.appendChild(button);
+    host.panel.appendChild(row);
+    this._hostRow = row;
+
+    host.container.appendChild(container);
+    host.container.addEventListener("click", this._onHostClick, true);
+    // on the style control's container: Escape may come from the row or from the legend
+    host.container.addEventListener("keydown", this._onKeydown);
+    this._hostObserver = new MutationObserver(this._onHostMutation);
+    this._hostObserver.observe(host.container, { attributes: true, attributeFilter: ["class"] });
+    if (!collapsed) host.container.classList.add(`${CLASS}-host-open`);
+
+    this._anchor = document.createElement("div");
+    this._anchor.classList.add(`${CLASS}-anchor`);
+    this._anchor.hidden = true;
   }
 
   onRemove() {
@@ -274,9 +401,22 @@ export class LegendControl implements IControl {
     this._map?.off("resize", this._onResize);
     document.fonts?.removeEventListener("loadingdone", this._onFontsLoaded);
     this._raise(false);
+    this._container?.removeEventListener("keydown", this._onKeydown);
+    if (this._host) {
+      this._hostObserver?.disconnect();
+      this._host.container.removeEventListener("click", this._onHostClick, true);
+      this._host.container.removeEventListener("keydown", this._onKeydown);
+      this._host.container.classList.remove(`${CLASS}-host-open`);
+      this._hostRow?.remove();
+      this._anchor?.remove();
+    }
     if (this._container?.parentNode) {
       this._container.parentNode.removeChild(this._container);
     }
+    this._host = undefined;
+    this._hostRow = undefined;
+    this._hostObserver = undefined;
+    this._anchor = undefined;
     this._container = undefined;
     this._panel = undefined;
     this._toggleButton = undefined;
@@ -288,6 +428,8 @@ export class LegendControl implements IControl {
   open() {
     this._container?.classList.remove(`${CLASS}-collapsed`);
     this._toggleButton?.setAttribute("aria-expanded", "true");
+    this._hostRow?.querySelector("button")?.setAttribute("aria-expanded", "true");
+    this._host?.container.classList.add(`${CLASS}-host-open`);
     this._raise(true);
     if (this._dirty) this.update();
   }
@@ -296,17 +438,32 @@ export class LegendControl implements IControl {
   close() {
     this._container?.classList.add(`${CLASS}-collapsed`);
     this._toggleButton?.setAttribute("aria-expanded", "false");
+    this._hostRow?.querySelector("button")?.setAttribute("aria-expanded", "false");
+    this._host?.container.classList.remove(`${CLASS}-host-open`);
     this._raise(false);
+  }
+
+  private _isCollapsed(): boolean {
+    return this._container?.classList.contains(`${CLASS}-collapsed`) ?? true;
+  }
+
+  /** The map corner the control sits in: its own, or the style control's when hosted there. */
+  private _corner(): HTMLElement | undefined {
+    const corner = (this._host?.container ?? this._container)?.parentElement ?? undefined;
+    return corner && CORNER.test(corner.className) ? corner : undefined;
   }
 
   /** In a map corner the open panel overlays the neighbouring controls (like maplibre-style-control). */
   private _raise(open: boolean) {
-    const corner = this._toggleButton ? this._container?.parentElement : undefined;
-    if (corner && /\bmaplibregl-ctrl-(top|bottom)-/.test(corner.className)) corner.style.zIndex = open ? "99" : "";
+    if (!this._toggleButton && !this._host) return;
+    // the style panel raises the same corner: leave it raised while that panel is open
+    if (!open && this._host?.container.classList.contains(STYLE.open)) return;
+    const corner = this._corner();
+    if (corner) corner.style.zIndex = open ? "99" : "";
   }
 
   toggle() {
-    if (this._container?.classList.contains(`${CLASS}-collapsed`)) this.open();
+    if (this._isCollapsed()) this.open();
     else this.close();
   }
 
@@ -447,7 +604,7 @@ export class LegendControl implements IControl {
     }
     let available = width;
     if (width > 0) {
-      const corner = /\bmaplibregl-ctrl-(?:top|bottom)-(left|right|center)\b/.exec(this._container.parentElement?.className ?? "")?.[1];
+      const corner = CORNER.exec(this._corner()?.className ?? "")?.[2];
       // before the panel has a layout (or centred, where its edges move with its width): an estimate
       available = width - 20;
       const mapRect = box.getBoundingClientRect();

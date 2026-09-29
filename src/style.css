@@ -3,8 +3,11 @@
      consumer's global :root. Values follow the maptoolkit control skin. */
   --legend-control-font-family: "Mulish", "Helvetica Neue", Arial, sans-serif;
   --legend-control-duration: 200ms;
+  --legend-control-duration-fast: 120ms;
   --legend-control-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --legend-control-map: 0 2px 8px rgba(25, 31, 57, 0.15), 0 0 0 1px rgba(25, 31, 57, 0.06);
+  /* a raised control: hovered or open (maplibre-style-control's --style-control-shadow) */
+  --legend-control-shadow: 0 12px 32px rgba(25, 31, 57, 0.12), 0 2px 6px rgba(25, 31, 57, 0.06);
   --legend-control-border-color: #e1e2ea;
   /* hairlines between the two columns and the groups — a trace of the text
      colour, so they stay faint on any ground the style paints (the second
@@ -34,7 +37,13 @@
   --legend-control-symbol-reach: 10px;
   --legend-control-symbol-reach-y: 4px;
   --legend-control-row-height: 32px;
-  --legend-control-toggle-size: 29px; /* MapLibre's control button */
+  --legend-control-toggle-size: 29px; /* as tall as MapLibre's control buttons */
+  /* the button keeps its own colours: the panel's text colours follow the
+     style's background, the button stays white */
+  --legend-control-toggle-bg: #ffffff;
+  --legend-control-toggle-bg-active: #e2e7fd;
+  --legend-control-toggle-color: #282932;
+  --legend-control-toggle-color-active: var(--legend-control-color-primary);
 
   /* a transparent column: [toggle button] + panel; in a map corner the panel
      leaves the flow and opens beside the button (see the corner rules below) */
@@ -69,40 +78,91 @@
   display: none;
 }
 
-/* toggle button: MapLibre's control button (maplibregl-ctrl-group + .maplibregl-ctrl-icon) with a legend glyph */
+/* toggle button: a MapLibre control (maplibregl-ctrl-group) in the Maptoolkit
+   control skin of maplibre-style-control — rounded, soft shadow, lifted while
+   hovered or open */
 .maplibre-legend-control .maplibre-legend-control-toggle {
   flex: 0 0 auto;
+  transition:
+    transform var(--legend-control-duration) var(--legend-control-ease),
+    box-shadow var(--legend-control-duration) var(--legend-control-ease),
+    background-color var(--legend-control-duration-fast) var(--legend-control-ease);
 }
-/* `button: "icon"`: Material Symbols "event_list" (Apache 2.0), turned 180° so the
-   squares stand left and the lines right, like a legend row */
-.maplibre-legend-control .maplibre-legend-control-toggle .maplibregl-ctrl-icon {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' width='20' height='20' fill='%23656776'%3E%3Cpath d='M640-120q-33 0-56.5-23.5T560-200v-160q0-33 23.5-56.5T640-440h160q33 0 56.5 23.5T880-360v160q0 33-23.5 56.5T800-120H640Zm0-80h160v-160H640v160ZM80-240v-80h360v80H80Zm560-280q-33 0-56.5-23.5T560-600v-160q0-33 23.5-56.5T640-840h160q33 0 56.5 23.5T880-760v160q0 33-23.5 56.5T800-520H640Zm0-80h160v-160H640v160ZM80-640v-80h360v80H80Z'/%3E%3C/svg%3E");
-  transform: rotate(180deg);
+.maplibre-legend-control .maplibre-legend-control-toggle:not(:empty) {
+  border-radius: var(--legend-control-radius);
+  background: var(--legend-control-toggle-bg);
+  box-shadow: var(--legend-control-map);
 }
-.maplibre-legend-control .maplibre-legend-control-toggle button:hover .maplibregl-ctrl-icon,
-.maplibre-legend-control .maplibre-legend-control-toggle button[aria-expanded="true"] .maplibregl-ctrl-icon {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' width='20' height='20' fill='%23282932'%3E%3Cpath d='M640-120q-33 0-56.5-23.5T560-200v-160q0-33 23.5-56.5T640-440h160q33 0 56.5 23.5T880-360v160q0 33-23.5 56.5T800-120H640Zm0-80h160v-160H640v160ZM80-240v-80h360v80H80Zm560-280q-33 0-56.5-23.5T560-600v-160q0-33 23.5-56.5T640-840h160q33 0 56.5 23.5T880-760v160q0 33-23.5 56.5T800-520H640Zm0-80h160v-160H640v160ZM80-640v-80h360v80H80Z'/%3E%3C/svg%3E");
-}
-/* `button: "text"` (default): the word for "legend", as wide as it needs to be */
-.maplibre-legend-control .maplibre-legend-control-toggle .maplibre-legend-control-toggle-text {
+.maplibre-legend-control .maplibre-legend-control-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   width: auto;
-  padding: 0 10px;
+  height: var(--legend-control-toggle-size);
+  border-radius: inherit;
   font-family: var(--legend-control-font-family);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1;
   letter-spacing: 0.02em;
-  color: var(--legend-control-color-fg-muted);
+  color: var(--legend-control-toggle-color);
   white-space: nowrap;
+  transition: color var(--legend-control-duration-fast) var(--legend-control-ease);
 }
-.maplibre-legend-control .maplibre-legend-control-toggle .maplibre-legend-control-toggle-text:hover,
-.maplibre-legend-control .maplibre-legend-control-toggle .maplibre-legend-control-toggle-text[aria-expanded="true"] {
-  color: var(--legend-control-color-fg-strong);
+/* no grey MapLibre hover/press fill: the lift is the feedback */
+.maplibre-legend-control .maplibre-legend-control-toggle button:not(:disabled):hover,
+.maplibre-legend-control .maplibre-legend-control-toggle button:not(:disabled):active {
+  background-color: transparent;
+}
+/* `button: "icon-text"` (default): the icon, then the word for "legend" */
+.maplibre-legend-control .maplibre-legend-control-toggle .maplibre-legend-control-toggle-icon-text {
+  padding: 0 11px 0 8px;
+}
+/* `button: "icon"`: a square button */
+.maplibre-legend-control .maplibre-legend-control-toggle .maplibre-legend-control-toggle-icon {
+  width: var(--legend-control-toggle-size);
+  padding: 0;
+}
+/* Material Symbols "event_list" (Apache 2.0), turned 180° so the squares stand
+   left and the lines right, like a legend row; a mask, so it takes the text colour */
+.maplibre-legend-control .maplibre-legend-control-toggle-glyph {
+  flex: 0 0 auto;
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-color: currentColor;
+  -webkit-mask: var(--legend-control-toggle-glyph) center / 100% no-repeat;
+  mask: var(--legend-control-toggle-glyph) center / 100% no-repeat;
+  transform: rotate(180deg);
+}
+.maplibre-legend-control .maplibre-legend-control-toggle-icon .maplibre-legend-control-toggle-glyph {
+  width: 18px;
+  height: 18px;
+}
+/* hover only where there is a pointer that hovers: on touch it would stick */
+@media (hover: hover) {
+  .maplibre-legend-control .maplibre-legend-control-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--legend-control-shadow);
+  }
+}
+/* open: stays lifted, tinted, in the primary colour */
+.maplibre-legend-control.maplibre-legend-control-with-toggle:not(.maplibre-legend-control-collapsed) .maplibre-legend-control-toggle:not(:empty) {
+  transform: translateY(-2px);
+  box-shadow: var(--legend-control-shadow);
+  background: var(--legend-control-toggle-bg-active);
+}
+.maplibre-legend-control.maplibre-legend-control-with-toggle:not(.maplibre-legend-control-collapsed) .maplibre-legend-control-toggle button {
+  color: var(--legend-control-toggle-color-active);
 }
 
 /* In a map corner the panel opens below the button (top corners) or above it
    (bottom corners), aligned with the button's outer edge, so the button keeps
-   its place whether it shows the word or the icon; the control raises its
-   corner while open so the panel overlays the neighbouring controls. */
+   its place with the word or the icon alone; the control raises its corner
+   while open so the panel overlays the neighbouring controls. Closed, the
+   panel fades out and slides 8px towards the button instead of vanishing
+   (maplibre-style-control's motion), so it grows from the button's corner. */
 .maplibregl-ctrl-top-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel,
 .maplibregl-ctrl-top-right .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
   position: absolute;
@@ -132,6 +192,285 @@
   bottom: calc(var(--legend-control-toggle-size) + 10px);
   left: 50%;
   transform: translateX(-50%);
+}
+/* the origin sits on the panel's fixed edge, which the control measures (see _fitToMap) */
+.maplibregl-ctrl-top-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  transform-origin: top left;
+}
+.maplibregl-ctrl-top-right .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  transform-origin: top right;
+}
+.maplibregl-ctrl-top-center .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  transform-origin: top center;
+}
+.maplibregl-ctrl-bottom-left .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  transform-origin: bottom left;
+}
+.maplibregl-ctrl-bottom-right .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  transform-origin: bottom right;
+}
+.maplibregl-ctrl-bottom-center .maplibre-legend-control-with-toggle .maplibre-legend-control-panel {
+  transform-origin: bottom center;
+}
+:is(
+    .maplibregl-ctrl-top-left,
+    .maplibregl-ctrl-top-right,
+    .maplibregl-ctrl-top-center,
+    .maplibregl-ctrl-bottom-left,
+    .maplibregl-ctrl-bottom-right,
+    .maplibregl-ctrl-bottom-center
+  )
+  .maplibre-legend-control-with-toggle
+  .maplibre-legend-control-panel {
+  transition:
+    opacity var(--legend-control-duration) var(--legend-control-ease),
+    transform var(--legend-control-duration) var(--legend-control-ease),
+    visibility 0s;
+}
+/* closed: hidden (out of the tab order and the accessibility tree) once the fade has run */
+:is(
+    .maplibregl-ctrl-top-left,
+    .maplibregl-ctrl-top-right,
+    .maplibregl-ctrl-top-center,
+    .maplibregl-ctrl-bottom-left,
+    .maplibregl-ctrl-bottom-right,
+    .maplibregl-ctrl-bottom-center
+  )
+  .maplibre-legend-control-with-toggle.maplibre-legend-control-collapsed
+  .maplibre-legend-control-panel {
+  display: block;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--legend-control-duration) var(--legend-control-ease),
+    transform var(--legend-control-duration) var(--legend-control-ease),
+    visibility 0s linear var(--legend-control-duration);
+}
+:is(.maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right)
+  .maplibre-legend-control-with-toggle.maplibre-legend-control-collapsed
+  .maplibre-legend-control-panel {
+  transform: translateY(-8px) scale(0.98);
+}
+:is(.maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right)
+  .maplibre-legend-control-with-toggle.maplibre-legend-control-collapsed
+  .maplibre-legend-control-panel {
+  transform: translateY(8px) scale(0.98);
+}
+.maplibregl-ctrl-top-center .maplibre-legend-control-with-toggle.maplibre-legend-control-collapsed .maplibre-legend-control-panel {
+  transform: translateX(-50%) translateY(-8px) scale(0.98);
+}
+.maplibregl-ctrl-bottom-center .maplibre-legend-control-with-toggle.maplibre-legend-control-collapsed .maplibre-legend-control-panel {
+  transform: translateX(-50%) translateY(8px) scale(0.98);
+}
+/* reduced motion: the panel only fades, the button does not lift */
+@media (prefers-reduced-motion: reduce) {
+  .maplibre-legend-control .maplibre-legend-control-toggle,
+  .maplibre-legend-control .maplibre-legend-control-toggle:hover,
+  .maplibre-legend-control.maplibre-legend-control-with-toggle:not(.maplibre-legend-control-collapsed) .maplibre-legend-control-toggle:not(:empty) {
+    transform: none;
+  }
+  :is(.maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right)
+    .maplibre-legend-control-with-toggle.maplibre-legend-control-collapsed
+    .maplibre-legend-control-panel {
+    transform: none;
+  }
+  :is(.maplibregl-ctrl-top-center, .maplibregl-ctrl-bottom-center)
+    .maplibre-legend-control-with-toggle.maplibre-legend-control-collapsed
+    .maplibre-legend-control-panel {
+    transform: translateX(-50%);
+  }
+}
+
+/* icons shared by the button and the row in the style control's panel (Material Symbols, Apache 2.0) */
+.maplibre-legend-control,
+.maplibre-legend-control-style-row {
+  --legend-control-toggle-glyph: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960'%3E%3Cpath d='M640-120q-33 0-56.5-23.5T560-200v-160q0-33 23.5-56.5T640-440h160q33 0 56.5 23.5T880-360v160q0 33-23.5 56.5T800-120H640Zm0-80h160v-160H640v160ZM80-240v-80h360v80H80Zm560-280q-33 0-56.5-23.5T560-600v-160q0-33 23.5-56.5T640-840h160q33 0 56.5 23.5T880-760v160q0 33-23.5 56.5T800-520H640Zm0-80h160v-160H640v160ZM80-640v-80h360v80H80Z'/%3E%3C/svg%3E");
+  --legend-control-chevron: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960'%3E%3Cpath d='M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z'/%3E%3C/svg%3E");
+}
+
+/* `button: "style-control"`: a row at the foot of the style control's panel,
+   behind a hairline, in that panel's own tokens (inherited from
+   .maplibre-style-control, with fallbacks) */
+.maplibre-style-control .maplibre-legend-control-style-row {
+  margin: var(--style-control-space-4, 16px) 0 0;
+  padding: var(--style-control-space-3, 12px) 0 0;
+  border-top: 1px solid var(--style-control-border-color, #e1e2ea);
+}
+.maplibre-style-control .maplibre-legend-control-style-row button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 0 4px 0 6px;
+  border: 0;
+  border-radius: var(--style-control-radius-sm, 4px);
+  background: transparent;
+  font-family: var(--style-control-font-family, inherit);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--style-control-color-fg-strong, #282932);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--style-control-duration-fast, 120ms) var(--style-control-ease, ease);
+}
+.maplibre-style-control .maplibre-legend-control-style-row button:focus:only-child {
+  border-radius: var(--style-control-radius-sm, 4px);
+}
+.maplibre-style-control .maplibre-legend-control-style-row button:not(:disabled):active {
+  background-color: var(--style-control-bg-subtle, #f6f6f9);
+}
+@media (hover: hover) {
+  .maplibre-style-control .maplibre-legend-control-style-row button:not(:disabled):hover {
+    background-color: var(--style-control-bg-subtle, #f6f6f9);
+  }
+}
+.maplibre-style-control .maplibre-legend-control-style-row-glyph,
+.maplibre-style-control .maplibre-legend-control-style-row-chevron {
+  flex: 0 0 auto;
+  display: block;
+  background-color: currentColor;
+}
+.maplibre-style-control .maplibre-legend-control-style-row-glyph {
+  width: 18px;
+  height: 18px;
+  -webkit-mask: var(--legend-control-toggle-glyph) center / 100% no-repeat;
+  mask: var(--legend-control-toggle-glyph) center / 100% no-repeat;
+  transform: rotate(180deg);
+}
+.maplibre-style-control .maplibre-legend-control-style-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.maplibre-style-control .maplibre-legend-control-style-row-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--style-control-color-fg-muted, #656776);
+  -webkit-mask: var(--legend-control-chevron) center / 100% no-repeat;
+  mask: var(--legend-control-chevron) center / 100% no-repeat;
+}
+/* the style tile stays lifted while the legend is open: it is what closes it */
+.maplibre-style-control.maplibre-legend-control-host-open:not(:empty) {
+  transform: translateY(-2px);
+  box-shadow: var(--style-control-shadow, var(--legend-control-shadow));
+}
+/* the legend opens where the style panel opens — beside the tile — and moves
+   like it: fading, sliding 8px from the tile's side */
+.maplibre-style-control > .maplibre-legend-control.maplibre-legend-control-in-style-control {
+  position: absolute;
+  display: block;
+  transition:
+    opacity var(--legend-control-duration) var(--legend-control-ease),
+    transform var(--legend-control-duration) var(--legend-control-ease),
+    visibility 0s;
+}
+.maplibre-style-control > .maplibre-legend-control.maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed {
+  display: block;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--legend-control-duration) var(--legend-control-ease),
+    transform var(--legend-control-duration) var(--legend-control-ease),
+    visibility 0s linear var(--legend-control-duration);
+}
+.maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed .maplibre-legend-control-panel {
+  display: block;
+}
+.maplibregl-ctrl-top-left .maplibre-style-control > .maplibre-legend-control-in-style-control {
+  top: 0;
+  left: 0;
+  margin-left: calc(var(--style-control-current-size, 85px) + 10px);
+  transform-origin: top left;
+}
+.maplibregl-ctrl-bottom-left .maplibre-style-control > .maplibre-legend-control-in-style-control {
+  bottom: 0;
+  left: 0;
+  margin-left: calc(var(--style-control-current-size, 85px) + 10px);
+  transform-origin: bottom left;
+}
+.maplibregl-ctrl-top-right .maplibre-style-control > .maplibre-legend-control-in-style-control {
+  top: 0;
+  right: 0;
+  margin-right: calc(var(--style-control-current-size, 85px) + 10px);
+  transform-origin: top right;
+}
+.maplibregl-ctrl-bottom-right .maplibre-style-control > .maplibre-legend-control-in-style-control {
+  bottom: 0;
+  right: 0;
+  margin-right: calc(var(--style-control-current-size, 85px) + 10px);
+  transform-origin: bottom right;
+}
+.maplibregl-ctrl-top-center .maplibre-style-control > .maplibre-legend-control-in-style-control {
+  top: calc(var(--style-control-current-size, 85px) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  transform-origin: top center;
+}
+.maplibregl-ctrl-bottom-center .maplibre-style-control > .maplibre-legend-control-in-style-control {
+  bottom: calc(var(--style-control-current-size, 85px) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  transform-origin: bottom center;
+}
+:is(.maplibregl-ctrl-top-left, .maplibregl-ctrl-bottom-left)
+  .maplibre-style-control
+  > .maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed {
+  transform: translateX(-8px) scale(0.98);
+}
+:is(.maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-right)
+  .maplibre-style-control
+  > .maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed {
+  transform: translateX(8px) scale(0.98);
+}
+.maplibregl-ctrl-top-center .maplibre-style-control > .maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed {
+  transform: translateX(-50%) translateY(-8px) scale(0.98);
+}
+.maplibregl-ctrl-bottom-center .maplibre-style-control > .maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed {
+  transform: translateX(-50%) translateY(8px) scale(0.98);
+}
+/* narrow maps: beside the tile there is no room, and the style panel's way —
+   covering the tile — would hide the only way to close the legend: above or below it */
+@media only screen and (max-width: 768px) {
+  :is(.maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right) .maplibre-style-control > .maplibre-legend-control-in-style-control {
+    top: calc(var(--style-control-current-size, 85px) + 10px);
+    margin: 0;
+  }
+  :is(.maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right) .maplibre-style-control > .maplibre-legend-control-in-style-control {
+    top: auto;
+    bottom: calc(var(--style-control-current-size, 85px) + 10px);
+    margin: 0;
+  }
+  :is(.maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right)
+    .maplibre-style-control
+    > .maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed {
+    transform: translateY(-8px) scale(0.98);
+  }
+  :is(.maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right)
+    .maplibre-style-control
+    > .maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed {
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .maplibre-style-control.maplibre-legend-control-host-open:not(:empty) {
+    transform: none;
+  }
+  :is(.maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right)
+    .maplibre-style-control
+    > .maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed {
+    transform: none;
+  }
+  :is(.maplibregl-ctrl-top-center, .maplibregl-ctrl-bottom-center)
+    .maplibre-style-control
+    > .maplibre-legend-control-in-style-control.maplibre-legend-control-collapsed {
+    transform: translateX(-50%);
+  }
 }
 
 /* list — ONE grid across all groups: the left column is as wide as the widest

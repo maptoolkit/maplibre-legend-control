@@ -58,7 +58,7 @@
       import { Style } from "./style-core.min.js";
 
       const API_KEY = "iib";
-      const FAMILY = "https://styles.maptoolkit.net/maptoolkit/maptoolkit-v3.json";
+      const FAMILY = "https://styles.maptoolkit.net/maptoolkit/maptoolkit.json";
       // The seven child styles of the family, generated here from its raw
       // envelope (master config + overlays) with the local style-family-js, so
       // the layer ids and the legend manifest are the current ones.
@@ -100,10 +100,13 @@
         });
         map.addControl(new NavigationControl(), "top-right");
         map.addControl(new LogoControl());
-        map.addControl(new StyleControl({ styles, active: styles[0].id }));
-        // two legends to compare the buttons: the icon top-left, the word bottom-left above the logo (its default place)
-        map.addControl(new LegendControl({ button: "icon", collapsed: true }), "top-left");
-        map.addControl(new LegendControl());
+        const styleControl = new StyleControl({ styles, active: styles[0].id });
+        map.addControl(styleControl);
+        // the three buttons: the icon alone top-left, the legend at the foot of the style control's
+        // panel bottom-left above the logo (added after the style control), icon and word bottom-right
+        map.addControl(new LegendControl({ button: "icon" }), "top-left");
+        map.addControl(new LegendControl({ button: "style-control", styleControl }));
+        map.addControl(new LegendControl({ button: "icon-text" }), "bottom-right");
         status.remove();
       } catch (error) {
         status.textContent = `Fehler: ${error.message}`;
