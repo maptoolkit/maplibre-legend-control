@@ -1,7 +1,6 @@
 {
   "name": "@maptoolkit/maplibre-legend-control",
-  "version": "0.0.0",
-  "private": true,
+  "version": "1.0.0",
   "description": "A MapLibre GL JS control plugin that shows a legend of the map features currently visible in the viewport.",
   "repository": {
     "type": "git",
