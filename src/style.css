@@ -584,20 +584,23 @@
   top: calc(100% + 10px);
 }
 
-/* the panel's close button: an ✕ at the top right, in the panel's text colours
-   (light on dark grounds); its ground hides a row scrolled beneath it */
+/* the panel's close button: an ✕ at the top right, on the first heading's line,
+   in the panel's text colours (light on dark grounds). The box hugs the glyph
+   and ends above the first row (which starts ~30px down), so it never covers
+   that row's ⓘ; its ground hides a row scrolled beneath it, and a transparent
+   ring (::after) widens the hit area to 24px without covering anything. */
 .maplibre-legend-control .maplibre-legend-control-panel {
   position: relative;
 }
 .maplibre-legend-control .maplibre-legend-control-close {
   position: absolute;
-  top: 8px;
+  top: 10px;
   right: 8px;
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 18px;
+  height: 18px;
   padding: 0;
   border: 0;
   border-radius: var(--legend-control-radius-sm);
@@ -615,6 +618,18 @@
   background-color: currentColor;
   -webkit-mask: var(--legend-control-close-glyph) center / 100% no-repeat;
   mask: var(--legend-control-close-glyph) center / 100% no-repeat;
+}
+.maplibre-legend-control .maplibre-legend-control-close::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+}
+/* nothing else at the top right runs under the ✕: the empty message, and a long first heading */
+.maplibre-legend-control-close ~ .maplibre-legend-control-list > .maplibre-legend-control-empty {
+  padding-right: 24px;
+}
+.maplibre-legend-control-close ~ .maplibre-legend-control-list > .maplibre-legend-control-group:first-of-type > .maplibre-legend-control-group-name {
+  padding: 0 24px;
 }
 .maplibre-legend-control .maplibre-legend-control-close:not(:disabled):hover,
 .maplibre-legend-control .maplibre-legend-control-close:not(:disabled):active {
