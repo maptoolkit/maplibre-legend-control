@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Upload the hosted demo to the demos bucket (demos.maptoolkit.net/legend/).
 #
-# The page ships the local builds that are not published yet: this control's
-# dist bundle and the style editor's style-core bundle (style-family-js).
-# Build both first:
-#   (here)                 npm run build
+# The page loads this control from npm (jsDelivr) and ships the one local
+# build that is not published yet: the style editor's style-core bundle
+# (style-family-js). Build it first:
 #   (../styleeditor)       node scripts/build-style-core.mjs
 #
 # Credentials for the Hetzner Object Storage bucket, never committed:
@@ -36,8 +35,6 @@ put() { # put <local file> <remote name> <content type>
 }
 
 put "$HERE/index.html" index.html "text/html; charset=utf-8"
-put "$ROOT/dist/maplibre-legend-control.js" maplibre-legend-control.js "text/javascript; charset=utf-8"
-put "$ROOT/dist/maplibre-legend-control.css" maplibre-legend-control.css "text/css; charset=utf-8"
 put "$STYLE_CORE" style-core.min.js "text/javascript; charset=utf-8"
 
 echo "→ https://demos.maptoolkit.net/$PREFIX/index.html"

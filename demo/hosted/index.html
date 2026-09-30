@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-style-control@1.1.1/dist/maplibre-style-control.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-logo-control@1.0.0/dist/maplibre-logo-control.css" />
-    <link rel="stylesheet" href="./maplibre-legend-control.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-legend-control@1.0.0/dist/maplibre-legend-control.css" />
     <style>
       html,
       body {
@@ -39,7 +39,8 @@
         "imports": {
           "maplibre-gl": "https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.mjs",
           "@maptoolkit/maplibre-style-control": "https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-style-control@1.1.1/dist/maplibre-style-control.js",
-          "@maptoolkit/maplibre-logo-control": "https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-logo-control@1.0.0/dist/maplibre-logo-control.js"
+          "@maptoolkit/maplibre-logo-control": "https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-logo-control@1.0.0/dist/maplibre-logo-control.js",
+          "@maptoolkit/maplibre-legend-control": "https://cdn.jsdelivr.net/npm/@maptoolkit/maplibre-legend-control@1.0.0/dist/maplibre-legend-control.js"
         }
       }
     </script>
@@ -51,10 +52,9 @@
       import { Map as MapLibreMap, NavigationControl } from "maplibre-gl";
       import { StyleControl } from "@maptoolkit/maplibre-style-control";
       import { LogoControl } from "@maptoolkit/maplibre-logo-control";
-      // Local builds, uploaded next to this page: the legend control and
-      // style-family-js (style-core) as the style editor bundles them. Neither
-      // is published yet with the legend metadata.
-      import { LegendControl } from "./maplibre-legend-control.js";
+      import { LegendControl } from "@maptoolkit/maplibre-legend-control";
+      // A local build, uploaded next to this page: style-family-js (style-core)
+      // as the style editor bundles it, not published yet with the legend metadata.
       import { Style } from "./style-core.min.js";
 
       const API_KEY = "iib";
