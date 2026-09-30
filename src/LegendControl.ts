@@ -39,9 +39,14 @@ export type LegendControlOptions = {
    * control as `styleControl`, added to the map before the legend), and its
    * panel opens where the style panel was; a click on the style tile brings
    * the style panel back. Without a style control on the map it falls back to `"icon-text"`.
+   * `"attribution"` sets the word for "legend", bold, in front of MapLibre's
+   * attribution ("Legend | MapLibre | © …") while the bar is expanded; collapsed
+   * to its ⓘ, the bar shows no word (an open panel stays open). The panel opens
+   * above the bar. Without an attribution control on the map it falls back to
+   * `"icon-text"`.
    * @defaultValue `"icon-text"`
    */
-  button?: "icon-text" | "icon" | "style-control";
+  button?: "icon-text" | "icon" | "style-control" | "attribution";
   /**
    * The style control whose panel hosts the legend with `button: "style-control"`.
    */
@@ -140,6 +145,20 @@ const STYLE = {
   tile: "maplibre-style-control-current",
 };
 
+/** MapLibre's AttributionControl: a <details> whose classes tell its state */
+const ATTRIB = {
+  control: "maplibregl-ctrl-attrib",
+  compact: "maplibregl-compact",
+  shown: "maplibregl-compact-show",
+  empty: "maplibregl-attrib-empty",
+};
+
+/** The attribution control of this map, in one of the map's corners. */
+function attributionOf(map: Map): HTMLElement | undefined {
+  const all = map.getContainer()?.querySelectorAll<HTMLElement>(`.${ATTRIB.control}`) ?? [];
+  return [...all].find((el) => CORNER.test(el.parentElement?.className ?? ""));
+}
+
 /** The style control's own elements the legend hooks into. */
 type StyleHost = { control: StyleControlLike; container: HTMLElement; panel: HTMLElement; tile: HTMLElement };
 
@@ -229,6 +248,9 @@ export class LegendControl implements IControl {
   private _hostRow?: HTMLElement;
   private _anchor?: HTMLElement;
   private _hostObserver?: MutationObserver;
+  /** `button: "attribution"`: MapLibre's attribution bar the button sits beside */
+  private _attrib?: HTMLElement;
+  private _attribObserver?: MutationObserver;
   private _list?: HTMLElement;
   private _timer?: ReturnType<typeof setTimeout>;
   private _model?: LegendModel;
@@ -295,8 +317,17 @@ export class LegendControl implements IControl {
       else console.warn('LegendControl: button "style-control" needs `styleControl`, added to the map before the legend — showing the legend button instead.');
     }
 
+    let attributed = false;
+    if (this.options.toggle !== false && this.options.button === "attribution") {
+      this._attrib = attributionOf(map);
+      if (this._attrib) attributed = true;
+      else console.warn('LegendControl: button "attribution" needs MapLibre\'s attribution control on the map — showing the legend button instead.');
+    }
+
     if (hosted) {
       this._attachToStyleControl(map, collapsed);
+    } else if (attributed) {
+      this._attachToAttribution(map, collapsed);
     } else if (this.options.toggle !== false) {
       this._container.classList.add("maplibregl-ctrl");
       // a MapLibre control button — maplibregl-ctrl-group + .maplibregl-ctrl-icon give it the native look
@@ -334,6 +365,19 @@ export class LegendControl implements IControl {
     this._panel.setAttribute("role", "region");
     this._panel.setAttribute("aria-label", getUIString(map, "LegendControl.Title"));
     if (this._host) this._panel.tabIndex = -1; // takes the focus from the style panel's row
+    if (this.options.toggle !== false) {
+      // an ✕ at the top right; without the control's own trigger the host owns the open state
+      const closeButton = document.createElement("button");
+      closeButton.type = "button";
+      closeButton.classList.add(`${CLASS}-close`);
+      closeButton.title = getUIString(map, "LegendControl.Close");
+      closeButton.setAttribute("aria-label", getUIString(map, "LegendControl.Close"));
+      closeButton.addEventListener("click", () => {
+        this.close();
+        (this._toggleButton ?? this._host?.tile)?.focus();
+      });
+      this._panel.appendChild(closeButton);
+    }
     this._list = document.createElement("div");
     this._list.classList.add(`${CLASS}-list`);
     this._panel.appendChild(this._list);
@@ -394,6 +438,76 @@ export class LegendControl implements IControl {
     this._anchor.hidden = true;
   }
 
+  /**
+   * `button: "attribution"`: the word for "legend", bold and followed by a
+   * separator, on the attribution's line — before it in a left corner, after it
+   * (and so left of it) in a right one. The attribution's state is mirrored onto
+   * the control (`data-attrib`): `strip` (a full bar), `joined` (the expanded
+   * compact pill, which the word extends) or `collapsed` (the bar shrunk to its
+   * ⓘ, or no attribution at all: no word, while an open panel stays open).
+   */
+  private _attachToAttribution(map: Map, collapsed: boolean) {
+    const attrib = this._attrib!;
+    const container = this._container!;
+    container.classList.add("maplibregl-ctrl", `${CLASS}-with-toggle`, `${CLASS}-attrib`);
+    const side = CORNER.exec(attrib.parentElement!.className)![2] === "left" ? "left" : "right";
+    container.classList.add(`${CLASS}-attrib-${side}`);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.classList.add(`${CLASS}-toggle-attrib`);
+    button.title = getUIString(map, "LegendControl.Toggle");
+    button.setAttribute("aria-label", getUIString(map, "LegendControl.Toggle"));
+    button.setAttribute("aria-expanded", String(!collapsed));
+    button.textContent = getUIString(map, "LegendControl.Label");
+    button.addEventListener("click", () => this.toggle());
+    const separator = document.createElement("span");
+    separator.classList.add(`${CLASS}-attrib-separator`);
+    separator.setAttribute("aria-hidden", "true");
+    separator.textContent = "|";
+    container.append(button, separator);
+    container.addEventListener("keydown", this._onKeydown);
+    this._toggleButton = button;
+
+    if (side === "left") attrib.before(container);
+    else attrib.after(container);
+    this._syncAttribution();
+    this._attribObserver = new MutationObserver(() => this._syncAttribution());
+    // classes: compact/expanded/empty; `open`: the ⓘ flips it after the classes; children: the text changes with the style
+    this._attribObserver.observe(attrib, { attributes: true, attributeFilter: ["class", "open"], childList: true, subtree: true });
+
+    this._anchor = document.createElement("div");
+    this._anchor.classList.add(`${CLASS}-anchor`);
+    this._anchor.hidden = true;
+  }
+
+  /** Mirror the attribution's state onto the control and keep the panel above the bar, 10px from the map's edge. */
+  private _syncAttribution() {
+    const attrib = this._attrib;
+    const container = this._container;
+    if (!attrib || !container) return;
+    const classes = attrib.classList;
+    const collapsedBar = classes.contains(ATTRIB.empty) || (classes.contains(ATTRIB.compact) && !classes.contains(ATTRIB.shown));
+    const state = collapsedBar ? "collapsed" : classes.contains(ATTRIB.compact) ? "joined" : "strip";
+    if (container.dataset.attrib !== state) container.dataset.attrib = state;
+    // the bar gives up its spacing on the side the word joins it (the host class, set once, lets the stylesheet do that)
+    if (!classes.contains(`${CLASS}-attrib-host`)) classes.add(`${CLASS}-attrib-host`);
+    this._placeAttributionPanel();
+    // the bar's new width is laid out only after the browser has finished toggling it
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => this._placeAttributionPanel());
+  }
+
+  private _placeAttributionPanel() {
+    const panel = this._panel;
+    const corner = this._corner();
+    if (!this._attrib || !panel || !corner || !this._container) return;
+    const cornerRect = corner.getBoundingClientRect();
+    const box = this._container.getBoundingClientRect();
+    if (cornerRect.width <= 0) return; // no layout yet; an empty control (bar collapsed) still has its place
+    if (this._container.classList.contains(`${CLASS}-attrib-right`)) panel.style.right = `${Math.round(box.right - (cornerRect.right - 10))}px`;
+    else panel.style.left = `${Math.round(cornerRect.left + 10 - box.left)}px`;
+  }
+
   onRemove() {
     if (this._timer) clearTimeout(this._timer);
     this._timer = undefined;
@@ -402,6 +516,9 @@ export class LegendControl implements IControl {
     document.fonts?.removeEventListener("loadingdone", this._onFontsLoaded);
     this._raise(false);
     this._container?.removeEventListener("keydown", this._onKeydown);
+    this._attribObserver?.disconnect();
+    this._attrib?.classList.remove(`${CLASS}-attrib-host`);
+    this._anchor?.remove();
     if (this._host) {
       this._hostObserver?.disconnect();
       this._host.container.removeEventListener("click", this._onHostClick, true);
@@ -414,6 +531,8 @@ export class LegendControl implements IControl {
       this._container.parentNode.removeChild(this._container);
     }
     this._host = undefined;
+    this._attrib = undefined;
+    this._attribObserver = undefined;
     this._hostRow = undefined;
     this._hostObserver = undefined;
     this._anchor = undefined;
@@ -430,6 +549,7 @@ export class LegendControl implements IControl {
     this._toggleButton?.setAttribute("aria-expanded", "true");
     this._hostRow?.querySelector("button")?.setAttribute("aria-expanded", "true");
     this._host?.container.classList.add(`${CLASS}-host-open`);
+    this._placeAttributionPanel();
     this._raise(true);
     if (this._dirty) this.update();
   }
@@ -595,6 +715,7 @@ export class LegendControl implements IControl {
   private _fitToMap(rerender = true) {
     const map = this._map;
     if (!map || !this._container || !this._panel || !this._list) return;
+    this._placeAttributionPanel(); // the bar's width changes with the map's
     const box = map.getContainer();
     const height = box?.clientHeight ?? 0;
     const width = box?.clientWidth ?? 0;

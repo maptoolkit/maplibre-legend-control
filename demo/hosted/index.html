@@ -102,11 +102,13 @@
         map.addControl(new LogoControl());
         const styleControl = new StyleControl({ styles, active: styles[0].id });
         map.addControl(styleControl);
-        // the three buttons: the icon alone top-left, the legend at the foot of the style control's
-        // panel bottom-left above the logo (added after the style control), icon and word bottom-right
+        // the four buttons: the icon alone top-left, the legend at the foot of the style control's
+        // panel bottom-left above the logo (added after the style control), icon and word bottom-right,
+        // and the word on MapLibre's attribution line
         map.addControl(new LegendControl({ button: "icon" }), "top-left");
         map.addControl(new LegendControl({ button: "style-control", styleControl }));
         map.addControl(new LegendControl({ button: "icon-text" }), "bottom-right");
+        map.addControl(new LegendControl({ button: "attribution" }));
         status.remove();
       } catch (error) {
         status.textContent = `Fehler: ${error.message}`;

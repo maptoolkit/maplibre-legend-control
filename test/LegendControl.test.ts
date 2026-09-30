@@ -49,6 +49,27 @@ function createMockMap(options: { withFeatures?: boolean; background?: string | 
   } as unknown as MockMap;
 }
 
+/** A stand-in for MapLibre's attribution control: <details class="maplibregl-ctrl maplibregl-ctrl-attrib"> in a map corner. */
+function mountAttribution(map: MockMap, position: string, classes: string[]) {
+  const mapContainer = map.getContainer();
+  document.body.appendChild(mapContainer);
+  const corner = document.createElement("div");
+  corner.className = `maplibregl-ctrl-${position}`;
+  mapContainer.appendChild(corner);
+  const attrib = document.createElement("details");
+  attrib.className = "maplibregl-ctrl maplibregl-ctrl-attrib";
+  attrib.classList.add(...classes);
+  attrib.setAttribute("open", "");
+  const summary = document.createElement("summary");
+  summary.className = "maplibregl-ctrl-attrib-button";
+  const inner = document.createElement("div");
+  inner.className = "maplibregl-ctrl-attrib-inner";
+  inner.innerHTML = '<a href="https://maplibre.org/">MapLibre</a> | © OSM';
+  attrib.append(summary, inner);
+  corner.appendChild(attrib);
+  return { corner, attrib, remove: () => mapContainer.remove() };
+}
+
 /** A stand-in for maplibre-style-control's DOM: container > tile + panel, in a map corner, with open()/close(). */
 function mountStyleControl(map: MockMap) {
   const mapContainer = map.getContainer();
@@ -132,16 +153,17 @@ describe("LegendControl", () => {
     expect(icon.textContent).toBe("");
     expect(icon.getAttribute("aria-label")).toBe("Show or hide the legend"); // the icon still has a name
     // every language of the map maker has its own strings; an unknown one falls back to English
-    for (const [language, label, info] of [
-      ["fr", "Légende", "En savoir plus"],
-      ["ja", "凡例", "詳細"],
-      ["ar", "مفتاح الخريطة", "المزيد"],
-      ["xx", "Legend", "More about this"],
+    for (const [language, label, info, close] of [
+      ["fr", "Légende", "En savoir plus", "Fermer la légende"],
+      ["ja", "凡例", "詳細", "凡例を閉じる"],
+      ["ar", "مفتاح الخريطة", "المزيد", "إغلاق مفتاح الخريطة"],
+      ["xx", "Legend", "More about this", "Close the legend"],
     ]) {
       const map = createMockMap();
       new LegendControl({ language }).onAdd(map);
       expect(map._locale["LegendControl.Label"]).toBe(label);
       expect(map._locale["LegendControl.Info"]).toBe(info);
+      expect(map._locale["LegendControl.Close"]).toBe(close);
     }
   });
 
@@ -187,6 +209,30 @@ describe("LegendControl", () => {
     );
     // the button keeps its own colours: the panel's text colours follow the style's background
     expect(css).toMatch(/-toggle button \{[^}]*color: var\(--legend-control-toggle-color\);/);
+    // without the word the attribution line shows nothing of the legend
+    expect(css).toMatch(
+      /\[data-attrib="collapsed"\] \.maplibre-legend-control-toggle-attrib,\s*\.maplibre-legend-control-attrib\[data-attrib="collapsed"\] \.maplibre-legend-control-attrib-separator \{\s*display: none;/,
+    );
+  });
+
+  it("closes from an ✕ in the panel with every button, and hands the focus back", () => {
+    const map = createMockMap();
+    const container = new LegendControl({ language: "de", collapsed: false }).onAdd(map);
+    document.body.appendChild(container);
+    const close = container.querySelector(".maplibre-legend-control-panel > .maplibre-legend-control-close") as HTMLButtonElement;
+    expect(close.getAttribute("aria-label")).toBe("Legende schließen");
+    expect(close.title).toBe("Legende schließen");
+    close.click();
+    expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(true);
+    expect(document.activeElement).toBe(container.querySelector(".maplibre-legend-control-toggle button"));
+    container.remove();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {}); // the two hosted buttons fall back without a host here
+    for (const button of ["icon", "attribution", "style-control"] as const) {
+      expect(new LegendControl({ button }).onAdd(createMockMap()).querySelector(".maplibre-legend-control-close")).not.toBeNull();
+    }
+    warn.mockRestore();
+    // the host owns the open state: no ✕
+    expect(new LegendControl({ toggle: false }).onAdd(createMockMap()).querySelector(".maplibre-legend-control-close")).toBeNull();
   });
 
   it("starts open without its own button — the host opens it by mounting it", () => {
@@ -285,6 +331,73 @@ describe("LegendControl", () => {
     ).not.toBeNull();
     expect(warn).toHaveBeenCalledTimes(2);
     style.remove();
+    warn.mockRestore();
+  });
+
+  it("sits on MapLibre's attribution line with button: attribution", async () => {
+    const map = createMockMap();
+    const bar = mountAttribution(map, "bottom-right", ["maplibregl-compact", "maplibregl-compact-show"]);
+    const legend = new LegendControl({ language: "de", button: "attribution" });
+    const placed = legend.onAdd(map);
+    expect(placed.hidden).toBe(true); // MapLibre gets a stand-in
+    // in a right corner right after the bar, so it floats left of it; closed
+    const container = bar.attrib.nextElementSibling as HTMLElement;
+    expect(container.classList.contains("maplibre-legend-control-attrib")).toBe(true);
+    expect(container.classList.contains("maplibre-legend-control-attrib-right")).toBe(true);
+    expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(true);
+    // the bold word, then a separator the screen reader skips
+    const button = container.querySelector(".maplibre-legend-control-toggle-attrib") as HTMLButtonElement;
+    expect(button.textContent).toBe("Legende");
+    expect(container.querySelector(".maplibre-legend-control-attrib-separator")?.getAttribute("aria-hidden")).toBe("true");
+
+    // the bar's state is mirrored: expanded compact pill → joined, and the bar gives up its left edge
+    expect(container.dataset.attrib).toBe("joined");
+    expect(bar.attrib.classList.contains("maplibre-legend-control-attrib-host")).toBe(true);
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+    bar.attrib.classList.remove("maplibregl-compact-show"); // collapsed to the ⓘ, as after the first drag: no word
+    await settle();
+    expect(container.dataset.attrib).toBe("collapsed");
+    bar.attrib.classList.remove("maplibregl-compact"); // compact: false on a wide map
+    await settle();
+    expect(container.dataset.attrib).toBe("strip");
+    bar.attrib.classList.add("maplibregl-attrib-empty"); // no attribution: no word either
+    await settle();
+    expect(container.dataset.attrib).toBe("collapsed");
+
+    // it toggles like the other buttons; Escape closes and keeps the focus on the word
+    bar.attrib.classList.remove("maplibregl-attrib-empty");
+    await settle();
+    button.click();
+    expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(false);
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(bar.corner.style.zIndex).toBe("99");
+    button.focus();
+    button.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(container.classList.contains("maplibre-legend-control-collapsed")).toBe(true);
+    expect(document.activeElement).toBe(button);
+
+    // removing the legend leaves the bar as it was
+    bar.attrib.classList.add("maplibregl-compact", "maplibregl-compact-show");
+    await settle();
+    legend.onRemove();
+    expect(bar.corner.querySelector(".maplibre-legend-control")).toBeNull();
+    expect(bar.attrib.classList.contains("maplibre-legend-control-attrib-host")).toBe(false);
+    bar.remove();
+  });
+
+  it("stands before the attribution in a left corner, and falls back to its own button without one", () => {
+    const map = createMockMap();
+    const bar = mountAttribution(map, "bottom-left", []);
+    new LegendControl({ button: "attribution" }).onAdd(map);
+    const container = bar.attrib.previousElementSibling as HTMLElement;
+    expect(container.classList.contains("maplibre-legend-control-attrib-left")).toBe(true);
+    expect(container.dataset.attrib).toBe("strip");
+    bar.remove();
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fallback = new LegendControl({ button: "attribution" }).onAdd(createMockMap());
+    expect(warn).toHaveBeenCalledOnce();
+    expect(fallback.querySelector(".maplibre-legend-control-toggle-icon-text")).not.toBeNull();
     warn.mockRestore();
   });
 
