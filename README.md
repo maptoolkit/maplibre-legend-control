@@ -356,11 +356,8 @@ The demo loads a public Maptoolkit style by default. To develop against a style 
 [demos.maptoolkit.net/legend/index.html](https://demos.maptoolkit.net/legend/index.html)
 is a plain page ([demo/hosted/index.html](demo/hosted/index.html)) that loads
 MapLibre, this control and the style and logo controls — as published on npm —
-from jsDelivr through an import map, and the style editor's style-core bundle
-(style-family-js) from its own folder, as it is not published yet with the
-legend metadata. The page fetches the raw envelope of the
-`maptoolkit` style family from styles.maptoolkit.net and generates its
-seven child styles in the browser, so their layer ids and legend manifest are
-the current ones. `demo/hosted/upload.sh` puts the two files into the demos
-bucket (Hetzner Object Storage) with curl's SigV4 signing; it needs
+from jsDelivr through an import map, and the published Maptoolkit styles from
+styles.maptoolkit.org, which carry the legend metadata. It shows the four button
+placements at once. `demo/hosted/upload.sh` puts the page into the demos bucket
+(Hetzner Object Storage) with curl's SigV4 signing; it needs
 `DEMOS_S3_KEY`/`DEMOS_S3_SECRET`.

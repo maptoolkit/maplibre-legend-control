@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # Upload the hosted demo to the demos bucket (demos.maptoolkit.net/legend/).
 #
-# The page loads this control from npm (jsDelivr) and ships the one local
-# build that is not published yet: the style editor's style-core bundle
-# (style-family-js). Build it first:
-#   (../styleeditor)       node scripts/build-style-core.mjs
+# The page is self-contained: the controls come from npm (jsDelivr), the
+# styles from styles.maptoolkit.org. Only index.html is uploaded.
 #
 # Credentials for the Hetzner Object Storage bucket, never committed:
 #   DEMOS_S3_KEY=… DEMOS_S3_SECRET=… demo/hosted/upload.sh
@@ -20,8 +18,6 @@ BUCKET_URL="https://mtk-demos-zitnog-kyfwuc-omysv.fsn1.your-objectstorage.com"
 PREFIX="legend"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$HERE/../.." && pwd)"
-STYLE_CORE="$ROOT/../styleeditor/public/js/lib/style-core.min.js"
 
 put() { # put <local file> <remote name> <content type>
   local file="$1" name="$2" type="$3"
@@ -35,6 +31,5 @@ put() { # put <local file> <remote name> <content type>
 }
 
 put "$HERE/index.html" index.html "text/html; charset=utf-8"
-put "$STYLE_CORE" style-core.min.js "text/javascript; charset=utf-8"
 
 echo "→ https://demos.maptoolkit.net/$PREFIX/index.html"

@@ -18,20 +18,6 @@
         position: absolute;
         inset: 0;
       }
-      #status {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        font:
-          14px/1.4 system-ui,
-          sans-serif;
-        color: #444;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 8px 14px;
-        border-radius: 6px;
-        pointer-events: none;
-      }
     </style>
     <!-- The controls import "maplibre-gl" by its bare name: one copy for all of them. -->
     <script type="importmap">
@@ -47,73 +33,42 @@
   </head>
   <body>
     <div id="map"></div>
-    <div id="status">Styles werden generiert …</div>
     <script type="module">
       import { Map as MapLibreMap, NavigationControl } from "maplibre-gl";
       import { StyleControl } from "@maptoolkit/maplibre-style-control";
       import { LogoControl } from "@maptoolkit/maplibre-logo-control";
       import { LegendControl } from "@maptoolkit/maplibre-legend-control";
-      // A local build, uploaded next to this page: style-family-js (style-core)
-      // as the style editor bundles it, not published yet with the legend metadata.
-      import { Style } from "./style-core.min.js";
 
-      const API_KEY = "iib";
-      const FAMILY = "https://styles.maptoolkit.net/maptoolkit/maptoolkit.json";
-      // The seven child styles of the family, generated here from its raw
-      // envelope (master config + overlays) with the local style-family-js, so
-      // the layer ids and the legend manifest are the current ones.
-      // id = the style control's own locale key (StyleControl.Style.<id>); the map's
-      // locale table gives it a German label
-      const CHILDREN = [
-        ["summer", "Summer", "Sommer"],
-        ["winter", "Winter", "Winter"],
-        ["light", "Light", "Hell"],
-        ["dark", "Dark", "Dunkel"],
-        ["cycling", "Cycling", "Rad"],
-        ["hiking", "Hiking", "Wandern"],
-        ["street", "Street", "Straße"],
-      ];
-
-      const status = document.getElementById("status");
-      try {
-        const raw = await (await fetch(`${FAMILY}?api_key=${API_KEY}&mode=raw`)).json();
-        const family = await Style.create(raw);
-        const styles = CHILDREN.map(([id, key]) => ({
-          id: key,
-          value: family.generateExportReadyStateStyle(id),
-          image: `https://styles.maptoolkit.org/${id}.webp`,
-        }));
-
-        const map = new MapLibreMap({
-          container: "map",
-          style: styles[0].value,
-          center: [11.39, 47.27],
-          zoom: 12.5,
-          hash: true,
-          locale: Object.fromEntries(CHILDREN.map(([, key, label]) => [`StyleControl.Style.${key}`, label])),
-          // the styles service would bake the key into the tile urls; here the page does
-          transformRequest: (url) => {
-            if (/^https:\/\/[a-z0-9-]+\.maptoolkit\.net\//.test(url) && !url.includes("api_key=")) {
-              return { url: url + (url.includes("?") ? "&" : "?") + `api_key=${API_KEY}` };
-            }
-          },
-        });
-        map.addControl(new NavigationControl(), "top-right");
-        map.addControl(new LogoControl());
-        const styleControl = new StyleControl({ styles, active: styles[0].id });
-        map.addControl(styleControl);
-        // the four buttons: the icon alone top-left, the legend at the foot of the style control's
-        // panel bottom-left above the logo (added after the style control), icon and word bottom-right,
-        // and the word on MapLibre's attribution line
-        map.addControl(new LegendControl({ button: "icon" }), "top-left");
-        map.addControl(new LegendControl({ button: "style-control", styleControl }));
-        map.addControl(new LegendControl({ button: "icon-text" }), "bottom-right");
-        map.addControl(new LegendControl({ button: "attribution" }));
-        status.remove();
-      } catch (error) {
-        status.textContent = `Fehler: ${error.message}`;
-        console.error(error);
-      }
+      // The published Maptoolkit styles (styles.maptoolkit.org) carry the legend
+      // metadata; the style control offers the same styles by default. The map's
+      // locale table gives them German names.
+      const map = new MapLibreMap({
+        container: "map",
+        style: "https://styles.maptoolkit.org/summer.json",
+        center: [11.39, 47.27],
+        zoom: 12.5,
+        hash: true,
+        locale: {
+          "StyleControl.Style.Summer": "Sommer",
+          "StyleControl.Style.Winter": "Winter",
+          "StyleControl.Style.Light": "Hell",
+          "StyleControl.Style.Dark": "Dunkel",
+          "StyleControl.Style.Cycling": "Rad",
+          "StyleControl.Style.Hiking": "Wandern",
+          "StyleControl.Style.Street": "Straße",
+        },
+      });
+      map.addControl(new NavigationControl(), "top-right");
+      map.addControl(new LogoControl());
+      const styleControl = new StyleControl();
+      map.addControl(styleControl);
+      // the four buttons: the icon alone top-left, the legend at the foot of the style control's
+      // panel bottom-left above the logo (added after the style control), icon and word bottom-right,
+      // and the word on MapLibre's attribution line
+      map.addControl(new LegendControl({ button: "icon" }), "top-left");
+      map.addControl(new LegendControl({ button: "style-control", styleControl }));
+      map.addControl(new LegendControl({ button: "icon-text" }), "bottom-right");
+      map.addControl(new LegendControl({ button: "attribution" }));
     </script>
   </body>
 </html>
