@@ -79,8 +79,11 @@ evaluated paint and layout, and builds:
   ferries and admin borders, wavier for minor roads, pistes, cycle routes and
   waterways, winding for paths and contours — one of its shapes per entry,
   taken from the layer's position in the style so that layers drawn next to
-  each other never share a shape, stable across updates — scaled
-  together with their blur when too wide; the copies come from one and the same feature, ground level
+  each other never share a shape, stable across updates — as wide as on the
+  map up to 30 px (the row grows taller for them), beyond that scaled
+  together with their blur, with one scale for all lines of a group (the
+  widest decides), so a minor road stays narrower than a major one at every
+  zoom; the copies come from one and the same feature, ground level
   preferred over bridge/tunnel duplicates whose shadows and casings stay out.
   Route overlays (tag `overlay`) show the whole stack of their feature — the
   hiking band together with the path it runs on. Of the rendered stretches the

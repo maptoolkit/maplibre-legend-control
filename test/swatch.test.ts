@@ -10,6 +10,7 @@ import {
   pathMidTangent,
   truncateName,
   FILL_SHAPES,
+  lineFitScale,
   lineShapeFamilyFor,
   LINE_SHAPES,
   swatchVariantFor,
@@ -137,12 +138,25 @@ describe("wide strokes", () => {
     layout: { "line-cap": "round" },
   });
 
-  it("scales the stack so the widest stroke plus the curve fits the box, keeping ratios", () => {
+  const widths = (box: HTMLElement) => [...box.querySelectorAll("path.maplibre-legend-control-stroke")].map((p) => Number(p.getAttribute("stroke-width")));
+
+  it("draws a stack up to 30 px as wide as the map, the swatch growing taller around the centred curve", () => {
     // z18 motorway: 24 px main, casing 2 px around a 24 px gap = 28 px
-    const svg = createLineSwatch([mk("casing", "casing", 2, 24), mk("main", "main", 24)]);
-    const widths = [...svg.querySelectorAll("path.maplibre-legend-control-stroke")].map((p) => Number(p.getAttribute("stroke-width")));
-    expect(Math.max(...widths)).toBeCloseTo(16, 5); // 26 px box − 10 px curve extent
-    expect(widths[1] / widths[0]).toBeCloseTo(24 / 28, 5);
+    const box = createLineSwatch([mk("casing", "casing", 2, 24), mk("main", "main", 24)]);
+    expect(widths(box)).toEqual([28, 24]);
+    const svg = box.querySelector("svg")!;
+    expect(svg.getAttribute("height")).toBe("38"); // 28 px stroke + 10 px curve extent
+    expect(svg.getAttribute("viewBox")).toBe("0 -6 64 38"); // grown evenly above and below
+    expect(box.style.getPropertyValue("--legend-control-swatch-height")).toBe("38px");
+  });
+
+  it("scales a stack wider than 30 px down, keeping ratios", () => {
+    // casing 2 px around a 40 px gap = 44 px
+    const box = createLineSwatch([mk("casing", "casing", 2, 40), mk("main", "main", 40)]);
+    const [casing, main] = widths(box);
+    expect(casing).toBeCloseTo(30, 5);
+    expect(main / casing).toBeCloseTo(40 / 44, 5);
+    expect(box.querySelector("svg")!.getAttribute("height")).toBe("40");
   });
 
   it("keeps a casing's gap see-through instead of painting it in the casing colour", () => {
@@ -150,9 +164,11 @@ describe("wide strokes", () => {
     const casing = svg.querySelector("path.maplibre-legend-control-stroke-casing") as SVGPathElement;
     const ref = casing.getAttribute("mask")?.match(/^url\(#(.+)\)$/)?.[1];
     expect(ref).toBeTruthy();
-    const cut = svg.querySelector(`mask[id="${ref}"] path`) as SVGPathElement;
+    const mask = svg.querySelector(`mask[id="${ref}"]`)!;
+    expect([mask.getAttribute("y"), mask.getAttribute("height")]).toEqual(["-6", "38"]); // covers the grown box
+    const cut = mask.querySelector("path") as SVGPathElement;
     expect(cut.getAttribute("stroke")).toBe("black");
-    expect(Number(cut.getAttribute("stroke-width"))).toBeCloseTo((24 * 16) / 28, 5); // the gap, scaled like the strokes
+    expect(Number(cut.getAttribute("stroke-width"))).toBeCloseTo(24, 5); // the gap, as wide as on the map
     expect(svg.querySelector("path.maplibre-legend-control-stroke-main")?.getAttribute("mask")).toBeNull();
   });
 
@@ -162,13 +178,32 @@ describe("wide strokes", () => {
     const [casing, main] = [...svg.querySelectorAll("path.maplibre-legend-control-stroke")] as SVGPathElement[];
     const width = Number(casing.getAttribute("stroke-width"));
     const blur = Number(casing.style.filter.match(/blur\(([\d.]+)px\)/)![1]);
-    expect(width + 2 * blur).toBeCloseTo(16, 5); // stroke and its soft edge together fit the 26 px box under the 10 px curve
+    expect(width + 2 * blur).toBeCloseTo(30, 5); // stroke and its soft edge together stay within the 30 px cap
     expect(Number(main.getAttribute("stroke-width")) / width).toBeCloseTo(36 / 48, 5); // ratios kept
   });
 
-  it("leaves narrow stacks unscaled", () => {
-    const svg = createLineSwatch([mk("main", "main", 3)]);
-    expect(svg.querySelector("path")?.getAttribute("stroke-width")).toBe("3");
+  it("leaves narrow stacks unscaled in the standard box", () => {
+    const box = createLineSwatch([mk("main", "main", 3)]);
+    expect(box.querySelector("path")?.getAttribute("stroke-width")).toBe("3");
+    expect(box.querySelector("svg")!.getAttribute("viewBox")).toBe("0 0 64 26");
+    expect(box.style.getPropertyValue("--legend-control-swatch-height")).toBe("");
+  });
+
+  it("scales the lines of a group together, so a minor road stays narrower than a major one", () => {
+    const major = [mk("casing", "casing", 2, 40), mk("main", "main", 40)]; // 44 px
+    const minor = [mk("main", "main", 20)];
+    const lineScale = Math.min(lineFitScale(major), lineFitScale(minor));
+    expect(lineScale).toBeCloseTo(30 / 44, 5); // the widest decides
+    const widest = (layers: ReturnType<typeof mk>[]) => Math.max(...widths(createLineSwatch(layers, 0, { lineScale })));
+    expect(widest(major)).toBeCloseTo(30, 5);
+    expect(widest(minor)).toBeCloseTo((20 * 30) / 44, 5); // not 20 as on its own
+    // a shared scale never widens a stack beyond what fits its own box
+    expect(Math.max(...widths(createLineSwatch(major, 0, { lineScale: 1 })))).toBeCloseTo(30, 5);
+  });
+
+  it("gives anything but a line the neutral fit scale", () => {
+    expect(lineFitScale([{ id: "f", type: "fill", role: "main", order: 0, paint: { "fill-color": "red" }, layout: {} }])).toBe(1);
+    expect(lineFitScale([])).toBe(1);
   });
 });
 

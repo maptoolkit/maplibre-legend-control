@@ -1,7 +1,7 @@
 import type { Map, IControl, ControlPosition } from "maplibre-gl";
 import { buildLegendModel, tagIn, featureIdentity, valueToString } from "./model";
 import { legendLocaleFor } from "./locales";
-import { createSwatch, createSymbolOnSwatch, createSymbolPreview, type GetImage, type RenderOptions } from "./swatch";
+import { createSwatch, createSymbolOnSwatch, createSymbolPreview, lineFitScale, type GetImage, type RenderOptions } from "./swatch";
 import { LEGEND_METADATA_KEY, type LegendEntry, type LegendManifest, type LegendModel, type RenderedFeature } from "./types";
 
 /**
@@ -793,6 +793,11 @@ export class LegendControl implements IControl {
       heading.textContent = group.label;
       section.appendChild(heading);
 
+      // one stroke scale for every line of the group: the widest decides, so the
+      // lines keep their widths relative to each other, as on the map
+      const lineScale = Math.min(1, ...group.entries.map((e) => lineFitScale(e.anchor?.swatch ?? e.swatch)));
+      const groupRender = { ...render, lineScale };
+
       const ul = document.createElement("ul");
       ul.classList.add(`${CLASS}-entries`);
       for (const entry of group.entries) {
@@ -805,7 +810,7 @@ export class LegendControl implements IControl {
         // (a peak keeps its elevation left-aligned under the name).
         const visual = document.createElement("span");
         visual.classList.add(`${CLASS}-visual`);
-        visual.appendChild(entry.kind === "instance" ? symbolOf(entry, getImage, render) : createSwatch(entry.swatch, getImage, entry.variant, render));
+        visual.appendChild(entry.kind === "instance" ? symbolOf(entry, getImage, groupRender) : createSwatch(entry.swatch, getImage, entry.variant, groupRender));
         li.appendChild(visual);
 
         const label = document.createElement("span");

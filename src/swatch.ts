@@ -17,7 +17,11 @@ export type StyleImageLike = {
 export type GetImage = (id: string) => StyleImageLike | undefined | null;
 
 /** How the rows are rendered: `maxNameWidth` caps a name in the map font (px); see `LegendControlOptions.maxNameWidth`. */
-export type RenderOptions = { maxNameWidth?: number };
+export type RenderOptions = {
+  maxNameWidth?: number;
+  /** One stroke scale for every line of a group (see {@link lineFitScale}): lines keep their widths relative to each other. */
+  lineScale?: number;
+};
 
 const CLASS = "maplibre-legend-control";
 const SWATCH_W = 64;
@@ -174,11 +178,11 @@ export function lineShapeFamilyFor(layerId: string): LineShapeFamily {
 /** Vertical extent of the curves above (all stay within y = 8…18). */
 const PATH_EXTENT = 10;
 /**
- * Strokes wider than this (incl. casing gaps and their blur) are scaled down
- * together, keeping their ratios: half the stroke lies above/below the curve,
- * so curve extent + widest stroke must fit the box height.
+ * Strokes up to this width (incl. casing gaps and their blur) are drawn as wide
+ * as on the map, the swatch growing taller for them (curve extent + widest
+ * stroke); wider stacks are scaled down together, keeping their ratios.
  */
-const MAX_STROKE = SWATCH_H - PATH_EXTENT;
+const MAX_STROKE = 30;
 /** A blur wider than this stops reading as a soft edge and just washes the swatch out. */
 const MAX_BLUR = 3;
 
@@ -214,18 +218,19 @@ let maskSeq = 0;
  * the gap. The map shows what lies between them — a translucent road over the
  * hiking band beneath it — so the gap must not be painted in the casing colour.
  */
-function gapMask(path: SVGElement, d: string, stroke: Stroke, scale: number, scaleX = 1, width = SWATCH_W): SVGElement {
+function gapMask(path: SVGElement, d: string, stroke: Stroke, scale: number, scaleX = 1, width = SWATCH_W, top = 0, height = SWATCH_H): SVGElement {
   const id = `${CLASS}-gap-${++maskSeq}`;
   const mask = document.createElementNS(SVG_NS, "mask");
   mask.setAttribute("id", id);
   mask.setAttribute("maskUnits", "userSpaceOnUse");
   mask.setAttribute("x", "0");
-  mask.setAttribute("y", "0");
+  mask.setAttribute("y", String(top));
   mask.setAttribute("width", String(width));
-  mask.setAttribute("height", String(SWATCH_H));
+  mask.setAttribute("height", String(height));
   const keep = document.createElementNS(SVG_NS, "rect");
+  keep.setAttribute("y", String(top));
   keep.setAttribute("width", String(width));
-  keep.setAttribute("height", String(SWATCH_H));
+  keep.setAttribute("height", String(height));
   keep.setAttribute("fill", "white");
   const cut = document.createElementNS(SVG_NS, "path");
   cut.setAttribute("class", `${CLASS}-gap`);
@@ -245,14 +250,17 @@ function gapMask(path: SVGElement, d: string, stroke: Stroke, scale: number, sca
  * Stacked line strokes on a curve of the main layer's shape family (see
  * {@link LINE_SHAPES}): blur/casing below, the main stroke on top, dash arrays,
  * caps and blur from the evaluated layers; a casing's gap is masked out, not
- * painted. All strokes are scaled together when the widest would not fit, so
- * casing and main keep their ratio at every zoom.
+ * painted. Strokes keep their map width up to {@link MAX_STROKE}, the box
+ * growing taller around the centred curve; beyond it all strokes are scaled
+ * together, so casing and main keep their ratio at every zoom.
  */
 type LineSwatchOptions = {
   /** Wider than the standard box: the bend is stretched to this width, the strokes keep their width. */
   width?: number;
   /** A name is set along the line: the tighter families give way to a gentler bend, as the map labels only its softer curves. */
   readable?: boolean;
+  /** A scale shared with the other lines of the group; never above what this stack needs to fit. */
+  scale?: number;
 };
 type LineSwatchParts = { box: HTMLElement; svg?: SVGSVGElement; d: string; scaleX: number; width: number };
 
@@ -267,22 +275,19 @@ function lineSwatchParts(layers: SwatchLayer[], variant = 0, options: LineSwatch
   const scaleX = width / SWATCH_W;
   const strokes = layers.map(strokeOf).filter((s): s is Stroke => Boolean(s));
   if (!strokes.length) return { box, d, scaleX, width };
+  const scale = Math.min(options.scale ?? 1, fitScale(strokes));
 
-  // A blurred stroke reaches its blur radius beyond its own width on each side
-  // (a piste casing at z17 is 49 px wide with a 12 px blur), so stroke and blur
-  // share the budget — otherwise the soft edge is cut off by the box. Below the
-  // blur cap both scale together; above it the blur is fixed and only the
-  // stroke has to fit what is left.
-  const fit = (st: Stroke) => {
-    const shared = MAX_STROKE / (st.width + 2 * st.blur);
-    return st.blur * shared <= MAX_BLUR ? shared : (MAX_STROKE - 2 * MAX_BLUR) / st.width;
-  };
-  const scale = Math.min(1, ...strokes.map(fit));
+  // a stack wider than the standard box makes it taller; the viewBox grows
+  // evenly above and below, so the curves (drawn around y = 13) stay centred
+  const extent = Math.max(...strokes.map((st) => Math.max(0.75, st.width * scale) + 2 * Math.min(st.blur * scale, MAX_BLUR)));
+  const height = Math.max(SWATCH_H, Math.ceil(extent + PATH_EXTENT));
+  const top = -(height - SWATCH_H) / 2;
+  if (height > SWATCH_H) box.style.setProperty("--legend-control-swatch-height", `${height}px`);
 
   const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", `0 0 ${width} ${SWATCH_H}`);
+  svg.setAttribute("viewBox", `0 ${round2(top)} ${width} ${height}`);
   svg.setAttribute("width", String(width));
-  svg.setAttribute("height", String(SWATCH_H));
+  svg.setAttribute("height", String(height));
   svg.setAttribute("aria-hidden", "true");
   for (const stroke of strokes) {
     const path = document.createElementNS(SVG_NS, "path");
@@ -308,11 +313,36 @@ function lineSwatchParts(layers: SwatchLayer[], variant = 0, options: LineSwatch
     }
     if (stroke.blur > 0) path.style.filter = `blur(${Math.min(stroke.blur * scale, MAX_BLUR)}px)`;
     stretchX(path, scaleX);
-    if (stroke.gap > 0) svg.appendChild(gapMask(path, d, stroke, scale, scaleX, width));
+    if (stroke.gap > 0) svg.appendChild(gapMask(path, d, stroke, scale, scaleX, width, round2(top), height));
     svg.appendChild(path);
   }
   box.appendChild(svg);
   return { box, svg, d, scaleX, width };
+}
+
+/** The scale that fits a stack's widest stroke into the box; 1 when everything fits. */
+function fitScale(strokes: Stroke[]): number {
+  // A blurred stroke reaches its blur radius beyond its own width on each side
+  // (a piste casing at z17 is 49 px wide with a 12 px blur), so stroke and blur
+  // share the budget — otherwise the soft edge is cut off by the box. Below the
+  // blur cap both scale together; above it the blur is fixed and only the
+  // stroke has to fit what is left.
+  const fit = (st: Stroke) => {
+    const shared = MAX_STROKE / (st.width + 2 * st.blur);
+    return st.blur * shared <= MAX_BLUR ? shared : (MAX_STROKE - 2 * MAX_BLUR) / st.width;
+  };
+  return Math.min(1, ...strokes.map(fit));
+}
+
+/**
+ * The scale a line stack needs to fit its swatch (1 for anything but a line).
+ * The control gives every line of a group the smallest of these, so a minor
+ * road stays narrower than a major one even when both are wider than the box.
+ */
+export function lineFitScale(layers: SwatchLayer[]): number {
+  const main = layers.find((l) => l.role === "main") ?? layers[0];
+  if (main?.type !== "line") return 1;
+  return fitScale(layers.map(strokeOf).filter((s): s is Stroke => Boolean(s)));
 }
 
 /** Stretch a shape sideways only: the geometry follows, every stroke keeps its width. */
@@ -331,10 +361,10 @@ function stretchX(shape: SVGElement, scaleX: number): void {
 export function createLineSwatch(layers: SwatchLayer[], variant = 0, options: RenderOptions = {}): HTMLElement {
   const label = layers.find((l) => l.type === "symbol" && l.role === "label");
   const raw = label ? valueToString(label.layout["text-field"])?.trim() : undefined;
-  if (!label || !raw) return lineSwatchParts(layers, variant).box;
+  if (!label || !raw) return lineSwatchParts(layers, variant, { scale: options.lineScale }).box;
   const text = textStyleFromLayer(label.layout, label.paint);
   const name = truncateName(raw, text, options.maxNameWidth);
-  const parts = lineSwatchParts(layers, variant, { width: nameWidth(name, text) + 2 * SYMBOL_REACH, readable: true });
+  const parts = lineSwatchParts(layers, variant, { width: nameWidth(name, text) + 2 * SYMBOL_REACH, readable: true, scale: options.lineScale });
   if (text.alongLine) setNameAlongLine(parts, name, text);
   else setNameStraight(parts, name, text);
   if (parts.width > SWATCH_W) parts.box.style.width = `${parts.width}px`;
@@ -803,14 +833,17 @@ export function createSymbolOnSwatch(
   if (main?.type === "line" && entry.name && entry.text?.alongLine && !entry.icon) {
     // set along the line inside the SVG, which sizes itself to the name plus the reach
     const name = truncateName(entry.name, entry.text, options.maxNameWidth);
-    const parts = lineSwatchParts(entry.anchor.swatch, entry.anchor.variant, { width: nameWidth(name, entry.text) + 2 * SYMBOL_REACH, readable: true });
+    const parts = lineSwatchParts(entry.anchor.swatch, entry.anchor.variant, { width: nameWidth(name, entry.text) + 2 * SYMBOL_REACH, readable: true, scale: options.lineScale });
     setNameAlongLine(parts, name, entry.text);
     box.classList.add(`${CLASS}-symbol-on-path`);
     box.appendChild(parts.box);
     return box;
   }
 
-  const base = createSwatch(entry.anchor.swatch, getImage, entry.anchor.variant);
+  const base = createSwatch(entry.anchor.swatch, getImage, entry.anchor.variant, { lineScale: options.lineScale });
+  // a wide road made its swatch taller: the box (sized by the symbol, at least a swatch high) follows
+  const tall = base.style.getPropertyValue("--legend-control-swatch-height");
+  if (tall) box.style.setProperty("--legend-control-swatch-height", tall);
   const svg = base.querySelector("svg");
   if (svg) {
     svg.setAttribute("preserveAspectRatio", "none");
