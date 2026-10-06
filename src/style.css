@@ -648,10 +648,14 @@
 
 /* list — ONE grid across all groups: the left column is as wide as the widest
    swatch/symbol anywhere in the legend, so centred symbols share one axis and
-   nothing gets clipped; group headings span both columns. */
+   nothing gets clipped; group headings span both columns. Rows are as tall as
+   their content: with `auto` rows, a host that gives the list a fixed height
+   (a flex column) squeezed them down to the cells' min-height and the symbols
+   ran into each other — the list scrolls instead. */
 .maplibre-legend-control .maplibre-legend-control-list {
   display: grid;
   grid-template-columns: max-content minmax(72px, 1fr);
+  grid-auto-rows: max-content;
   column-gap: var(--legend-control-space-3);
   align-items: center;
   overflow: auto;

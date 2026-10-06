@@ -161,7 +161,8 @@ entry; the manifest label (or the humanized key) on the right, right-aligned.
 The list is one grid across all groups, so the left column is as wide as the
 widest symbol and every block sits on one centre axis; `text-justify` only
 aligns the lines inside a block (a peak keeps its elevation left-aligned under
-its name).
+its name). Rows are as tall as their content, so a host that gives the list a
+fixed height (e.g. a flex layout) gets a scrolling list, never squeezed rows.
 
 The reverse also happens: one layer can paint a few property values
 differently, and its tag then gives those values their own keys
