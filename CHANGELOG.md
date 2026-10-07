@@ -1,5 +1,11 @@
 # @maptoolkit/maplibre-legend-control
 
+## 1.0.3
+
+### Patch Changes
+
+- 21e3014: README: drop the pre-release status note, fix the CDN snippet (it pointed at a 0.1 version that never existed), link the public legend docs for the `maptoolkit:legend` contract, and correct the description alignment and the demo's default style.
+
 ## 1.0.2
 
 ### Patch Changes
