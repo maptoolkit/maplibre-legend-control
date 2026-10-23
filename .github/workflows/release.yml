@@ -23,7 +23,6 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm ci
       - name: Create release PR or publish to npm
-        id: changesets
         uses: changesets/action@v1
         with:
           publish: npm run release
@@ -43,19 +42,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Consumers that pin this package (styleeditor, community docs) open a bump PR on this
       # event; each one ignores packages it doesn't use and waits until npm serves the version.
+      # The release is read off the tag changesets just created, like the step above: changeset
+      # v3 prints its publish result in a format changesets/action@v1 doesn't parse, so the
+      # action's `published` / `publishedPackages` outputs stay empty.
       - name: Notify consumers
-        if: steps.changesets.outputs.published == 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.MAPTOOLKIT_OPS_PAT }}
-          PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
         run: |
+          version=$(git tag --points-at HEAD | sed -n 's/^v//p' | head -1)
+          [ -n "$version" ] || { echo "Nothing published in this run."; exit 0; }
+          name=$(node -p "require('./package.json').name")
           for repo in maptoolkit/styleeditor maptoolkit/docs; do
-            echo "$PACKAGES" | jq -c '.[]' | while read -r p; do
-              name=$(jq -r .name <<<"$p"); version=$(jq -r .version <<<"$p")
-              gh api "repos/$repo/dispatches" -f event_type=maptoolkit-package-released \
-                -f "client_payload[package]=$name" -f "client_payload[version]=$version" \
-                && echo "$repo ← $name@$version" \
-                || echo "::warning::could not notify $repo about $name@$version"
-            done
+            gh api "repos/$repo/dispatches" -f event_type=maptoolkit-package-released \
+              -f "client_payload[package]=$name" -f "client_payload[version]=$version" \
+              && echo "$repo ← $name@$version" \
+              || echo "::warning::could not notify $repo about $name@$version"
           done
